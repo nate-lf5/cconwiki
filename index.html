@@ -227,6 +227,9 @@
   .article .a-body h3{font-size:16px;font-weight:700;margin:20px 0 8px}
   .article .a-body p{margin:11px 0}.article .a-body ul,.article .a-body ol{margin:11px 0 11px 22px}
   .article .a-body li{margin:5px 0}.article .a-body strong{font-weight:700;color:var(--text)}
+  .a-body a,.wysiwyg a{color:var(--brand);text-decoration:underline;font-weight:500;word-break:break-all}
+  .a-body .embed,.wysiwyg .embed{position:relative;padding-top:56.25%;margin:16px 0;border-radius:12px;overflow:hidden;background:#000;max-width:640px}
+  .a-body .embed iframe,.wysiwyg .embed iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
   .article .a-actions{display:flex;gap:8px;margin-top:30px;flex-wrap:wrap}
   .history{margin-top:26px;border-top:1px solid var(--line);padding-top:18px}
   .history h3{font-size:13.5px;margin-bottom:10px;color:var(--muted);font-weight:700}
@@ -303,9 +306,12 @@
   }
   @media(max-width:680px){
     html,body{overflow-x:hidden}
-    header.topbar{padding:0 12px;gap:8px;height:58px}
+    header.topbar{padding:0 10px;gap:6px;height:56px}
     .bname,.wlabel{display:none}
-    .quick,.btn.erp{display:none}
+    .btn.erp{display:none}
+    .quick{gap:1px;margin-right:0}
+    .qbtn{width:30px;height:30px}
+    .btn.grad.sm{padding:7px 11px}
     .home-hero{padding:30px 16px 22px;border-radius:18px}
     .home-hero h1{font-size:24px}
     .home-search input{font-size:15px;padding:14px 16px 14px 46px}
@@ -369,13 +375,6 @@
     <div class="who"><b id="meName"></b><small id="meEmail"></small><br><small id="meRole"></small></div>
     <button onclick="go('mine')">내 작성 글</button>
     <button onclick="document.getElementById('userMenu').classList.add('hidden');askReview('')">🔎 검토 요청</button>
-    <div class="menu-quick">
-      <button onclick="openExt(CONFIG.HOMEPAGE_URL)" title="홈페이지">🏠</button>
-      <button onclick="openExt(CONFIG.SLACK_URL)" title="Slack">💬</button>
-      <button onclick="openExt(CONFIG.INSTAGRAM_URL)" title="Instagram">📷</button>
-      <button onclick="openExt(CONFIG.GMAIL_URL)" title="Gmail">✉️</button>
-      <button onclick="openERP()" title="ERP">⤴</button>
-    </div>
     <button onclick="logout()">로그아웃</button>
   </div>
   <div class="layout">
@@ -645,7 +644,7 @@ function enterApp(){
   document.getElementById('avatar').textContent=m.name.slice(0,1);
   document.getElementById('meName').textContent=m.name;
   document.getElementById('meEmail').textContent=m.email;
-  document.getElementById('meRole').textContent=m.role==='admin'?'👑 총괄 관리자':'일반 사용자 · '+(m.dept||'');
+  document.getElementById('meRole').textContent=m.role==='admin'?'👑 총괄 관리자':('👤 사용자'+(m.dept?' · '+m.dept:''));
   document.getElementById('adminNav').classList.toggle('hidden',m.role!=='admin');
   refreshAdminDot();go('home');
 }
@@ -873,6 +872,7 @@ function renderArticle(id){
       </div>
       ${d.history.length?`<div class="history"><h3>수정 이력</h3>${d.history.slice().reverse().map(h=>`<div class="h-row">• ${fmtDate(h.t)} — ${esc(h.by)} ${esc(h.note||'수정')}</div>`).join('')}</div>`:''}
     </div>`;
+  document.querySelectorAll('.a-body a').forEach(a=>{a.target='_blank';a.rel='noopener noreferrer';});
 }
 
 /* ====================== EDITOR ====================== */
@@ -900,7 +900,9 @@ function renderEditor(id){
           <button onclick="fmt('underline')" style="text-decoration:underline">U</button><span class="sep"></span>
           <button onclick="fmt('insertUnorderedList')">• 목록</button>
           <button onclick="fmt('insertOrderedList')">1. 번호</button>
-          <button onclick="fmt('formatBlock','p')">본문</button>
+          <button onclick="fmt('formatBlock','p')">본문</button><span class="sep"></span>
+          <button onclick="insertLink()" title="링크 삽입 (YouTube·외부 사이트 등)">🔗 링크</button>
+          <button onclick="insertVideo()" title="YouTube 영상 삽입">▶ 영상</button>
         </div>
         <div id="edBody" class="wysiwyg" contenteditable="true" data-ph="내용을 입력하세요. 상단 버튼으로 서식을 적용할 수 있습니다.">${d?d.body:''}</div>
       </div>
@@ -919,6 +921,25 @@ function renderEditor(id){
   const dr=loadDraft();if(!id&&dr){if(confirm('임시 저장된 글이 있습니다. 불러올까요?')){document.getElementById('edTitle').value=dr.title;document.getElementById('edBody').innerHTML=dr.body;document.getElementById('edTags').value=dr.tags;document.getElementById('edCat').value=dr.cat;}}
 }
 function fmt(cmd,arg){document.execCommand(cmd,false,arg||null);document.getElementById('edBody').focus();}
+function insertLink(){
+  let url=prompt('연결할 주소(URL)를 입력하세요','https://');
+  if(!url)return;url=url.trim();if(!url||url==='https://')return;
+  if(/^javascript:/i.test(url))return toast('허용되지 않는 링크입니다.');
+  if(!/^https?:\/\//i.test(url))url='https://'+url.replace(/^\/+/,'');
+  const ed=document.getElementById('edBody');ed.focus();
+  const sel=window.getSelection();
+  if(sel&&sel.toString().trim()){document.execCommand('createLink',false,url);}
+  else{const txt=(prompt('링크에 표시할 글자 (비우면 주소가 그대로 표시됩니다)',url)||url).trim()||url;
+    document.execCommand('insertHTML',false,`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(txt)}</a>&nbsp;`);}
+}
+function insertVideo(){
+  let url=prompt('YouTube 영상 주소를 붙여넣으세요','https://');
+  if(!url)return;url=url.trim();
+  const m=url.match(/(?:youtu\.be\/|[?&]v=|embed\/|shorts\/)([\w-]{6,})/);
+  if(!m)return toast('유효한 YouTube 주소가 아닙니다. 영상 페이지 주소를 붙여넣어 주세요.');
+  const html=`<div class="embed"><iframe src="https://www.youtube.com/embed/${m[1]}" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen loading="lazy"></iframe></div><p><br></p>`;
+  document.getElementById('edBody').focus();document.execCommand('insertHTML',false,html);
+}
 function addAttach(files){[...files].forEach(f=>ATTACH.push({name:f.name,size:f.size}));renderAttach();}
 function renderAttach(){document.getElementById('attachList').innerHTML=ATTACH.map((a,i)=>`<div class="a-item">📎 ${esc(a.name)} <small style="color:var(--muted)">${(a.size/1024).toFixed(0)}KB</small><button onclick="ATTACH.splice(${i},1);renderAttach()">삭제</button></div>`).join('');}
 function collectDoc(){return {title:val('edTitle').trim(),cat:val('edCat'),
