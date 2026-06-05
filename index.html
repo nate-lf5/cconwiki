@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>써클커넥션 Wiki</title>
+
+<!-- Pretendard (SIL Open Font License 1.1 · 상업적 사용 무료) -->
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<!-- Supabase (공유 데이터베이스 + 구글 로그인) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+  :root{
+    --bg:#f7f7fb; --surface:#ffffff; --border:#ececf2; --line:#f1f1f6;
+    --text:#16161a; --muted:#7a7a88; --soft:#9b9ba8;
+    --brand:#5b5bf0; --brand2:#8b5cf6; --brand-ink:#4a4ae0;
+    --grad:linear-gradient(135deg,#5b5bf0 0%,#8b5cf6 55%,#c061f0 100%);
+    --grad-soft:linear-gradient(135deg,#eef0ff 0%,#f6effe 100%);
+    --accent:#10b981; --warn:#f59e0b; --danger:#ef4444;
+    --r:18px; --r-sm:12px; --r-pill:999px;
+    --sh-sm:0 1px 2px rgba(20,20,40,.04),0 4px 16px rgba(20,20,40,.04);
+    --sh:0 4px 24px rgba(30,25,80,.08),0 1px 3px rgba(30,25,80,.05);
+    --sh-lg:0 24px 70px rgba(40,30,90,.18);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  body{font-family:"Pretendard Variable",Pretendard,system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.6;font-size:15px;letter-spacing:-.01em}
+  button{font-family:inherit;cursor:pointer;border:none;background:none}
+  input,select,textarea{font-family:inherit;font-size:14.5px;color:var(--text)}
+  a{color:var(--brand);text-decoration:none}
+  .hidden{display:none!important}
+  mark{background:linear-gradient(180deg,transparent 55%,#fde68a 55%);color:inherit;padding:0 1px;border-radius:2px}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:11px 18px;
+    border-radius:var(--r-pill);font-weight:600;font-size:14.5px;color:#fff;background:var(--brand);
+    transition:transform .12s ease,box-shadow .2s ease,background .2s ease;white-space:nowrap}
+  .btn:hover{transform:translateY(-1px)}
+  .btn.grad{background:var(--grad);box-shadow:0 6px 20px rgba(110,80,240,.32)}
+  .btn.grad:hover{box-shadow:0 10px 28px rgba(110,80,240,.42)}
+  .btn.block{width:100%}
+  .btn.ghost{background:#f2f2f7;color:#3a3a44}
+  .btn.ghost:hover{background:#e9e9f1}
+  .btn.outline{background:#fff;color:#3a3a44;border:1px solid var(--border)}
+  .btn.outline:hover{background:#fafafc;border-color:#dcdce6}
+  .btn.sm{padding:7px 13px;font-size:13px}
+  .btn.ok{background:var(--accent);box-shadow:0 4px 14px rgba(16,185,129,.28)}
+  .btn.ok:hover{background:#0ea372}
+  .btn.warn{background:var(--warn)}
+  .btn.danger{background:var(--danger);box-shadow:0 4px 14px rgba(239,68,68,.24)}
+  .btn.danger:hover{background:#dc2f2f}
+  .btn.erp{background:#16161a;color:#fff;box-shadow:0 4px 14px rgba(20,20,30,.2)}
+  .btn.erp:hover{background:#2a2a33}
+
+  .pill{display:inline-flex;align-items:center;font-size:11.5px;padding:3px 10px;border-radius:var(--r-pill);font-weight:700;letter-spacing:0}
+  .pill.pending{background:#fff4e2;color:#c4790a}
+  .pill.approved{background:#e3f8ef;color:#089463}
+  .pill.rejected{background:#fde8e8;color:#d83a3a}
+  .pill.hidden{background:#eeeef3;color:#76768a}
+
+  /* AUTH */
+  #auth{min-height:100vh;display:grid;grid-template-columns:1.1fr .9fr;background:var(--bg)}
+  .auth-hero{position:relative;overflow:hidden;background:var(--grad);color:#fff;padding:64px 60px;
+    display:flex;flex-direction:column;justify-content:space-between}
+  .auth-hero::before{content:"";position:absolute;width:520px;height:520px;border-radius:50%;
+    background:radial-gradient(circle,rgba(255,255,255,.22),transparent 65%);top:-160px;right:-140px}
+  .auth-hero::after{content:"";position:absolute;width:420px;height:420px;border-radius:50%;
+    background:radial-gradient(circle,rgba(255,255,255,.14),transparent 65%);bottom:-160px;left:-120px}
+  .ah-top{position:relative;z-index:2}
+  .ah-logo{display:inline-flex;align-items:center;gap:10px;font-weight:800;font-size:18px;letter-spacing:-.02em}
+  .ah-logo .mark{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.2);
+    backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;font-size:18px}
+  .ah-mid{position:relative;z-index:2}
+  .ah-mid h1{font-size:40px;line-height:1.18;font-weight:800;letter-spacing:-.03em;margin-bottom:16px}
+  .ah-mid p{font-size:16px;opacity:.92;max-width:380px;line-height:1.65}
+  .ah-feats{position:relative;z-index:2;display:flex;flex-direction:column;gap:12px}
+  .ah-feat{display:flex;align-items:center;gap:11px;font-size:14.5px;opacity:.95}
+  .ah-feat .ck{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.22);
+    display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+  .auth-panel{display:flex;align-items:center;justify-content:center;padding:40px}
+  .auth-card{width:100%;max-width:380px}
+  .auth-card h2{font-size:25px;font-weight:800;letter-spacing:-.03em}
+  .auth-card .sub{color:var(--muted);font-size:14px;margin-top:6px;margin-bottom:26px}
+  .field{margin-bottom:15px}
+  .field label{display:block;font-size:13px;font-weight:600;margin-bottom:7px;color:#4a4a54}
+  .field input,.field select{width:100%;padding:12px 14px;border:1px solid var(--border);
+    border-radius:var(--r-sm);background:#fafafc;outline:none;transition:.16s}
+  .field input:focus,.field select:focus{border-color:var(--brand);background:#fff;box-shadow:0 0 0 4px rgba(110,80,240,.1)}
+  .google-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:9px;padding:13px;
+    border:1px solid var(--border);border-radius:var(--r-sm);background:#fff;font-weight:600;color:#3a3a44}
+  .google-btn:hover{background:#fafafc;border-color:#dcdce6}
+  .divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--soft);font-size:12px}
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--border)}
+  .note{font-size:12px;color:var(--soft);margin-top:10px;line-height:1.6}
+  .auth-switch{text-align:center;margin-top:20px;font-size:13.5px;color:var(--muted)}
+  .msg{font-size:13px;padding:10px 13px;border-radius:10px;margin-bottom:15px;line-height:1.5}
+  .msg.err{background:#fde8e8;color:#c93030}
+  .msg.info{background:#eef0ff;color:#4646cc}
+
+  /* GATE */
+  #gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--grad-soft)}
+  .gate-card{background:#fff;border:1px solid var(--border);border-radius:22px;box-shadow:var(--sh-lg);
+    max-width:440px;width:100%;padding:40px;text-align:center}
+  .gate-card .ic{font-size:42px}
+  .gate-card h2{font-size:22px;font-weight:800;margin:14px 0 8px;letter-spacing:-.03em}
+  .gate-card p{color:var(--muted);font-size:14.5px;line-height:1.7;margin-bottom:24px}
+
+  /* SHELL */
+  header.topbar{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.82);backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--line);display:flex;align-items:center;gap:18px;padding:0 26px;height:64px}
+  .brand{display:flex;align-items:center;gap:9px;font-size:17px;font-weight:800;cursor:pointer;letter-spacing:-.03em}
+  .brand .mark{width:30px;height:30px;border-radius:9px;background:var(--grad);display:flex;align-items:center;
+    justify-content:center;color:#fff;font-size:15px;box-shadow:0 4px 12px rgba(110,80,240,.34)}
+  .top-search{flex:1;max-width:540px;position:relative}
+  .top-search input{width:100%;padding:10px 16px 10px 40px;border:1px solid var(--border);
+    border-radius:var(--r-pill);background:#f4f4f9;outline:none;transition:.16s}
+  .top-search input:focus{background:#fff;border-color:var(--brand);box-shadow:0 0 0 4px rgba(110,80,240,.08)}
+  .top-search .ic{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:var(--soft);font-size:14px}
+  .spacer{flex:1}
+  .nav-btn{color:#46464f;font-weight:600;padding:9px 14px;border-radius:var(--r-pill);font-size:14px;transition:.15s}
+  .nav-btn:hover{background:#f2f2f7}
+  .nav-btn.badge{position:relative}
+  .nav-btn .dot{position:absolute;top:0;right:4px;background:var(--danger);color:#fff;font-size:10px;
+    font-weight:800;border-radius:10px;padding:0 5px;line-height:16px;box-shadow:0 0 0 2px #fff}
+  .avatar{width:36px;height:36px;border-radius:50%;background:var(--grad);color:#fff;display:flex;
+    align-items:center;justify-content:center;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(110,80,240,.3)}
+  .menu{position:absolute;right:26px;top:60px;background:#fff;border:1px solid var(--border);border-radius:14px;
+    box-shadow:var(--sh-lg);min-width:220px;padding:8px;z-index:40}
+  .menu .who{padding:10px 12px;border-bottom:1px solid var(--line);margin-bottom:6px}
+  .menu .who b{display:block;font-size:14.5px}.menu .who small{color:var(--muted);font-size:12.5px}
+  .menu button{display:block;width:100%;text-align:left;padding:10px 12px;border-radius:9px;color:#3a3a44;font-size:14px}
+  .menu button:hover{background:#f4f4f9}
+  main{max-width:1120px;margin:0 auto;padding:32px 26px 90px}
+
+  /* HOME */
+  .home-hero{position:relative;text-align:center;padding:52px 24px 30px;border-radius:26px;overflow:hidden;
+    background:var(--grad-soft);border:1px solid #ececfb;margin-bottom:6px}
+  .home-hero::before{content:"";position:absolute;width:300px;height:300px;border-radius:50%;
+    background:radial-gradient(circle,rgba(139,92,246,.16),transparent 70%);top:-120px;left:50%;transform:translateX(-50%)}
+  .home-hero .eyebrow{position:relative;display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;
+    color:var(--brand-ink);background:rgba(255,255,255,.7);padding:6px 14px;border-radius:var(--r-pill);
+    border:1px solid #e5e0fb;margin-bottom:18px}
+  .home-hero h1{position:relative;font-size:34px;font-weight:800;letter-spacing:-.035em;line-height:1.2}
+  .home-hero p{position:relative;color:#5a5a6a;margin-top:10px;font-size:15.5px}
+  .home-search{position:relative;max-width:600px;margin:26px auto 4px}
+  .home-search input{width:100%;padding:17px 20px 17px 54px;font-size:16.5px;border:1px solid #e2def8;
+    border-radius:var(--r-pill);outline:none;box-shadow:var(--sh);background:#fff}
+  .home-search input:focus{border-color:var(--brand);box-shadow:0 0 0 5px rgba(110,80,240,.12),var(--sh)}
+  .home-search .ic{position:absolute;left:20px;top:50%;transform:translateY(-50%);color:var(--brand);font-size:17px}
+  .hot{position:relative;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+  .hot a{font-size:12.5px;color:#5e5e70;background:#fff;border:1px solid var(--border);padding:5px 13px;border-radius:var(--r-pill)}
+  .hot a:hover{border-color:var(--brand);color:var(--brand)}
+  .suggest{position:absolute;top:62px;left:0;right:0;background:#fff;border:1px solid var(--border);
+    border-radius:16px;box-shadow:var(--sh-lg);overflow:hidden;z-index:20;text-align:left}
+  .suggest .s-item{display:flex;align-items:center;gap:12px;padding:12px 18px;cursor:pointer}
+  .suggest .s-item:hover{background:#f6f5fe}
+  .suggest .s-item .ico{width:30px;height:30px;border-radius:8px;background:var(--grad-soft);display:flex;
+    align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+  .suggest .s-item .tag{font-size:11px;color:var(--muted);background:#f2f2f7;padding:3px 9px;border-radius:var(--r-pill)}
+  .suggest .s-empty{padding:18px;color:var(--muted);text-align:center;font-size:13.5px}
+  .section-title{font-size:17px;font-weight:800;letter-spacing:-.02em;margin:38px 0 16px;display:flex;align-items:center;gap:9px}
+  .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:16px}
+  .cat-card{position:relative;background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:22px;
+    cursor:pointer;transition:transform .14s ease,box-shadow .2s ease,border-color .2s ease;overflow:hidden}
+  .cat-card:hover{transform:translateY(-3px);box-shadow:var(--sh);border-color:#e0dcfa}
+  .cat-card .emoji{width:46px;height:46px;border-radius:14px;background:var(--grad-soft);display:flex;
+    align-items:center;justify-content:center;font-size:23px;margin-bottom:14px}
+  .cat-card h3{font-size:15.5px;font-weight:700;margin-bottom:4px;letter-spacing:-.02em}
+  .cat-card p{font-size:12.5px;color:var(--muted);line-height:1.5}
+  .cat-card .cnt{font-size:12px;color:var(--brand);font-weight:700;margin-top:12px}
+  .doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(264px,1fr));gap:16px}
+  .doc-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:20px;cursor:pointer;
+    transition:transform .14s ease,box-shadow .2s ease,border-color .2s ease}
+  .doc-card:hover{transform:translateY(-3px);box-shadow:var(--sh);border-color:#e0dcfa}
+  .doc-card .cat{font-size:11.5px;color:var(--brand);font-weight:700}
+  .doc-card h4{font-size:15.5px;font-weight:700;margin:7px 0 8px;line-height:1.45;letter-spacing:-.02em}
+  .doc-card .excerpt{font-size:13px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .doc-card .meta{display:flex;gap:12px;font-size:11.5px;color:var(--soft);margin-top:13px}
+
+  /* SEARCH */
+  .results-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+  .results-head h2{font-size:21px;font-weight:800;letter-spacing:-.03em}
+  .filters{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+  .filters select{padding:8px 12px;border:1px solid var(--border);border-radius:var(--r-pill);background:#fff;outline:none}
+  .result-item{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:13px;
+    cursor:pointer;transition:box-shadow .2s ease,border-color .2s ease}
+  .result-item:hover{box-shadow:var(--sh);border-color:#e0dcfa}
+  .result-item h4{font-size:16.5px;font-weight:700;margin-bottom:5px;letter-spacing:-.02em}
+  .result-item .excerpt{color:var(--muted);font-size:13.5px}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px}
+  .tags .t{font-size:11.5px;background:#f2f2f7;color:#5a5a66;padding:3px 11px;border-radius:var(--r-pill)}
+
+  /* ARTICLE */
+  .article{background:#fff;border:1px solid var(--border);border-radius:22px;padding:40px;max-width:840px;margin:0 auto;box-shadow:var(--sh-sm)}
+  .breadcrumb{font-size:13px;color:var(--soft);margin-bottom:16px}
+  .breadcrumb a{color:var(--soft)}
+  .article h1{font-size:28px;font-weight:800;line-height:1.32;letter-spacing:-.035em;margin-bottom:14px}
+  .article .a-meta{display:flex;gap:14px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:13px;
+    border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:24px}
+  .article .a-body{font-size:15.5px;line-height:1.85;color:#2a2a32}
+  .article .a-body h2{font-size:19px;font-weight:800;margin:26px 0 10px;letter-spacing:-.02em}
+  .article .a-body h3{font-size:16px;font-weight:700;margin:20px 0 8px}
+  .article .a-body p{margin:11px 0}.article .a-body ul,.article .a-body ol{margin:11px 0 11px 22px}
+  .article .a-body li{margin:5px 0}.article .a-body strong{font-weight:700;color:var(--text)}
+  .article .a-actions{display:flex;gap:8px;margin-top:30px;flex-wrap:wrap}
+  .history{margin-top:26px;border-top:1px solid var(--line);padding-top:18px}
+  .history h3{font-size:13.5px;margin-bottom:10px;color:var(--muted);font-weight:700}
+  .history .h-row{font-size:13px;color:var(--muted);padding:5px 0}
+
+  /* EDITOR */
+  .editor{background:#fff;border:1px solid var(--border);border-radius:22px;padding:34px;max-width:840px;margin:0 auto;box-shadow:var(--sh-sm)}
+  .editor h2{font-size:22px;font-weight:800;letter-spacing:-.03em;margin-bottom:22px}
+  .editor .field input,.editor .field select,.editor .field textarea{width:100%;padding:12px 14px;
+    border:1px solid var(--border);border-radius:var(--r-sm);background:#fafafc;outline:none}
+  .editor .field input:focus,.editor .field textarea:focus,.editor .field select:focus{border-color:var(--brand);background:#fff;box-shadow:0 0 0 4px rgba(110,80,240,.1)}
+  .toolbar{display:flex;gap:4px;border:1px solid var(--border);border-bottom:none;border-radius:var(--r-sm) var(--r-sm) 0 0;
+    padding:7px;background:#fafafc;flex-wrap:wrap}
+  .toolbar button{background:#fff;border:1px solid var(--border);border-radius:8px;min-width:34px;height:31px;
+    font-weight:700;color:#3a3a44;font-size:13px;padding:0 8px}
+  .toolbar button:hover{background:#f1f1f6}
+  .toolbar .sep{width:1px;background:var(--border);margin:3px 4px}
+  .wysiwyg{min-height:260px;border:1px solid var(--border);border-radius:0 0 var(--r-sm) var(--r-sm);padding:16px;
+    background:#fff;outline:none;line-height:1.8}
+  .wysiwyg:empty:before{content:attr(data-ph);color:#b5b5c0}
+  .editor-actions{display:flex;gap:8px;margin-top:24px}
+  .attach-list{margin-top:9px;display:flex;flex-direction:column;gap:7px}
+  .attach-list .a-item{display:flex;align-items:center;gap:9px;font-size:13px;background:#f5f5fa;padding:8px 12px;border-radius:10px}
+  .attach-list .a-item button{margin-left:auto;color:var(--danger);font-size:13px}
+
+  /* DASHBOARD */
+  .page-head{margin:6px 0 22px}
+  .page-head h1{font-size:25px;font-weight:800;letter-spacing:-.035em}
+  .page-head p{color:var(--muted);margin-top:5px;font-size:14.5px}
+  .dash-tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:24px;flex-wrap:wrap}
+  .dash-tabs button{padding:12px 16px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;font-size:14px}
+  .dash-tabs button.active{color:var(--brand);border-bottom-color:var(--brand)}
+  .dash-tabs button .b{background:var(--danger);color:#fff;font-size:11px;border-radius:var(--r-pill);padding:0 7px;margin-left:6px;font-weight:800}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:15px;margin-bottom:28px}
+  .stat{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:20px;box-shadow:var(--sh-sm)}
+  .stat .n{font-size:28px;font-weight:800;letter-spacing:-.04em}
+  .stat .l{font-size:13px;color:var(--muted);margin-top:3px}
+  table.tbl{width:100%;background:#fff;border:1px solid var(--border);border-radius:var(--r);border-collapse:separate;border-spacing:0;overflow:hidden;box-shadow:var(--sh-sm)}
+  table.tbl th{background:#fafafc;text-align:left;font-size:12.5px;color:var(--muted);padding:13px 16px;font-weight:700}
+  table.tbl td{padding:13px 16px;border-top:1px solid var(--line);font-size:13.5px;vertical-align:middle}
+  table.tbl td .row-actions{display:flex;gap:6px;flex-wrap:wrap}
+  .empty{text-align:center;color:var(--muted);padding:48px;background:#fff;border:1px dashed var(--border);border-radius:var(--r)}
+
+  /* MODAL / TOAST */
+  .modal-bg{position:fixed;inset:0;background:rgba(20,18,40,.45);backdrop-filter:blur(3px);display:flex;
+    align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modal{background:#fff;border-radius:18px;max-width:470px;width:100%;padding:26px;box-shadow:var(--sh-lg)}
+  .modal h3{font-size:18px;font-weight:800;margin-bottom:10px;letter-spacing:-.02em}
+  .modal textarea{width:100%;min-height:90px;padding:11px;border:1px solid var(--border);border-radius:12px;margin-top:10px;outline:none}
+  .modal textarea:focus{border-color:var(--brand)}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:#16161a;color:#fff;
+    padding:13px 22px;border-radius:14px;font-size:14px;z-index:60;box-shadow:var(--sh-lg);opacity:0;transition:.3s;pointer-events:none}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media(max-width:880px){#auth{grid-template-columns:1fr}.auth-hero{display:none}}
+  @media(max-width:680px){.top-search{display:none}.home-hero h1{font-size:26px}.article,.editor{padding:22px}}
+</style>
+</head>
+<body>
+
+<!-- ============ AUTH ============ -->
+<div id="auth">
+  <div class="auth-hero">
+    <div class="ah-top"><div class="ah-logo"><span class="mark">◐</span> 써클커넥션 Wiki</div></div>
+    <div class="ah-mid">
+      <h1>회사의 모든 지식을<br>한곳에서, 검색 한 번으로.</h1>
+      <p>환영합니다! 써클커넥션의 사내 정보와 팁들을 확인해보세요.</p>
+    </div>
+    <div></div>
+  </div>
+  <div class="auth-panel">
+    <div class="auth-card">
+      <div id="loginForm">
+        <h2>로그인</h2>
+        <div class="sub">써클커넥션 임직원 전용 공간입니다.</div>
+        <div id="loginMsg"></div>
+        <button class="google-btn" onclick="googleLogin()">
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M45 24c0-1.6-.1-3.1-.4-4.6H24v9.3h11.8c-.5 2.7-2 5-4.3 6.5v5.4h7C42.6 36.9 45 31 45 24z"/><path fill="#34A853" d="M24 46c5.8 0 10.7-1.9 14.3-5.2l-7-5.4c-1.9 1.3-4.4 2.1-7.3 2.1-5.6 0-10.4-3.8-12.1-8.9H4.7v5.6C8.3 41.6 15.6 46 24 46z"/><path fill="#FBBC05" d="M11.9 28.6c-.4-1.3-.7-2.7-.7-4.1s.3-2.8.7-4.1v-5.6H4.7C3.2 17.7 2.4 20.7 2.4 24s.8 6.3 2.3 9.2l7.2-5.6z"/><path fill="#EA4335" d="M24 11.4c3.1 0 6 1.1 8.2 3.2l6.1-6.1C34.7 5 29.8 3 24 3 15.6 3 8.3 7.4 4.7 14.8l7.2 5.6c1.7-5.1 6.5-9 12.1-9z"/></svg>
+          Google Workspace 계정으로 로그인
+        </button>
+        <div id="oauthNote" class="note"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ GATE ============ -->
+<div id="gate" class="hidden"><div class="gate-card" id="gateInner"></div></div>
+
+<!-- ============ APP ============ -->
+<div id="app" class="hidden">
+  <header class="topbar">
+    <div class="brand" onclick="go('home')"><span class="mark">◐</span> 써클커넥션 <span style="font-weight:700;color:var(--muted)">Wiki</span></div>
+    <div class="top-search">
+      <span class="ic">🔍</span>
+      <input id="topSearch" autocomplete="off" placeholder="문서, 정책, 가이드 검색…" oninput="onTopSearch(this.value)" onkeydown="if(event.key==='Enter')runSearch(this.value)">
+    </div>
+    <div class="spacer"></div>
+    <button class="btn erp sm" onclick="openERP()" title="ERP 시스템으로 이동">⤴ ERP 바로가기</button>
+    <button class="btn grad sm" onclick="go('editor')">+ 새 글</button>
+    <button id="adminNav" class="nav-btn badge hidden" onclick="go('dash')">관리자 <span id="adminDot" class="dot hidden">0</span></button>
+    <div class="avatar" id="avatar" onclick="toggleMenu()"></div>
+  </header>
+  <div id="userMenu" class="menu hidden">
+    <div class="who"><b id="meName"></b><small id="meEmail"></small><br><small id="meRole"></small></div>
+    <button onclick="go('mine')">내 작성 글</button>
+    <button onclick="document.getElementById('userMenu').classList.add('hidden');askReview('')">🔎 검토 요청</button>
+    <button onclick="logout()">로그아웃</button>
+  </div>
+  <main id="view"></main>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* ====================== CONFIG ======================
+   ▶ 실제 공유 버전으로 켜려면 아래 두 값을 Supabase 프로젝트 값으로 채우세요.
+     (Supabase 대시보드 → Project Settings → API)
+   ▶ 비워두면 "데모 모드"(이 브라우저에만 저장)로 동작합니다.            */
+const CONFIG = {
+  SUPABASE_URL:      'https://ckccmeexrjgaofxemmob.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_mR4j5TQsW_oBtETkkTiU5Q_vlGY_NWY',
+  ALLOWED_DOMAIN:    'ccon.co.kr',
+  OWNER_EMAIL:       'nate@ccon.co.kr',
+  SERVICE_NAME:      '써클커넥션 Wiki',
+  ERP_URL:           'https://erp.ccon.co.kr'    // ★ ERP 주소(미정·임시값). 확정되면 이 한 줄만 바꾸세요
+};
+const SUPA = !!(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
+let sb = null;
+
+/* ====================== DATA ====================== */
+const LS='circle_wiki_v2';
+const CATEGORIES=[
+  {id:'policy', name:'회사 정책', emoji:'📋', desc:'인사·복리후생·업무 규칙', subs:['인사 정책','복리후생','업무 규칙']},
+  {id:'leave', name:'휴가 및 근무', emoji:'🏖️', desc:'휴가 종류·근무시간·유연근무', subs:['휴가 신청','근무 시간','특별 휴가']},
+  {id:'welfare', name:'식사 및 복지', emoji:'🍽️', desc:'카페테리아·식사·건강검진', subs:['식사 안내','복지','건강검진']},
+  {id:'event', name:'이벤트 운영', emoji:'🎪', desc:'행사 기획·예산·참가자 관리', subs:['기획 프로세스','예산 가이드','참가자 관리','체크리스트']},
+  {id:'system', name:'시스템 및 도구', emoji:'💻', desc:'소프트웨어·시스템 접근·IT 지원', subs:['소프트웨어','시스템 접근','IT 지원']},
+  {id:'edu', name:'교육 및 자료', emoji:'📚', desc:'매뉴얼·템플릿·외부 자료', subs:['매뉴얼','템플릿','외부 자료']},
+];
+const catName=id=>(CATEGORIES.find(c=>c.id===id)||{name:'기타'}).name;
+
+let DB={users:[],arts:[],requests:[],searches:0,sessionEmail:null};
+
+function seed(){
+  const now=Date.now(), D=86400000;
+  const users=[
+    {email:'nate@ccon.co.kr', name:'Nathan (대표)', dept:'경영', pw:'admin', role:'admin', status:'active', joined:now-120*D},
+    {email:'jiwon@ccon.co.kr', name:'김지원', dept:'기획팀', pw:'pass1234!', role:'user', status:'active', joined:now-60*D},
+    {email:'minho@ccon.co.kr', name:'이민호', dept:'운영팀', pw:'pass1234!', role:'user', status:'active', joined:now-40*D},
+    {email:'sora@ccon.co.kr', name:'박소라', dept:'디자인팀', pw:'pass1234!', role:'user', status:'pending', joined:now-1*D},
+  ];
+  const a=(o)=>Object.assign({id:'d'+Math.random().toString(36).slice(2,9),views:0,status:'approved',
+    author:'nate@ccon.co.kr',created:now,updated:now,history:[],reject:'',attach:[]},o);
+  const arts=[
+    a({title:'연차 휴가 신청 방법 및 규정', cat:'leave', tags:['휴가','연차','신청'], author:'jiwon@ccon.co.kr', views:142, created:now-30*D, updated:now-5*D,
+      body:'<h2>연차 휴가 개요</h2><p>입사 1년 미만은 매월 개근 시 <strong>1일</strong>의 연차가 발생하며, 1년 이상 근속자는 연 <strong>15일</strong>이 부여됩니다.</p><h2>신청 절차</h2><ol><li>그룹웨어 → 휴가 신청 메뉴 접속</li><li>희망 일자 및 사유 입력</li><li>팀장 승인 → 경영지원팀 확정</li></ol>'}),
+    a({title:'행사 기획 표준 프로세스 (RFP → 정산)', cat:'event', tags:['기획','프로세스','RFP'], author:'minho@ccon.co.kr', views:230, created:now-25*D, updated:now-3*D,
+      body:'<h2>1. 수주 및 RFP 분석</h2><p>클라이언트 RFP 접수 후 <strong>킥오프 미팅</strong>으로 목표·예산·일정을 확정합니다.</p><h2>2. 기획안 작성</h2><ul><li>컨셉 및 연출 시나리오</li><li>운영 인력·협력사 구성</li><li>예산안 작성</li></ul><h2>3. 정산</h2><p>행사 종료 후 <strong>2주 이내</strong> 정산서 제출.</p>'}),
+    a({title:'이벤트 예산 책정 가이드', cat:'event', tags:['예산','견적'], views:188, created:now-20*D, updated:now-20*D,
+      body:'<h2>예산 항목</h2><ul><li><strong>연출/제작비</strong>: 무대·음향·조명·영상</li><li><strong>인건비</strong>: 운영 인력·MC</li><li><strong>예비비</strong>: 총 예산의 5~10%</li></ul><h2>마진</h2><p>표준 대행 마진은 직접비의 <strong>15~20%</strong>.</p>'}),
+    a({title:'현장 운영 필수 체크리스트', cat:'event', tags:['체크리스트','운영'], author:'minho@ccon.co.kr', views:97, created:now-12*D, updated:now-12*D,
+      body:'<h2>D-1</h2><ul><li>무대/음향/조명 셋업·사운드 체크</li><li>동선·사이니지 확인</li></ul><h2>D-day</h2><ul><li>리허설(개장 2시간 전)</li><li>안전요원 배치 확인</li></ul>'}),
+    a({title:'신규 입사자 온보딩 가이드', cat:'policy', tags:['온보딩','신입'], views:120, created:now-10*D, updated:now-4*D,
+      body:'<h2>첫 주 체크리스트</h2><ul><li>그룹웨어/메신저 계정 발급</li><li>보안 서약·사내 규정 숙지</li><li>담당 멘토 배정</li></ul>'}),
+    a({title:'카페테리아 이용 및 식대 지원 안내', cat:'welfare', tags:['식사','복지'], author:'jiwon@ccon.co.kr', views:64, created:now-15*D, updated:now-15*D,
+      body:'<h2>운영 시간</h2><p>점심 11:30~13:00 / 저녁(행사 시) 18:00~19:00</p><h2>식대 지원</h2><p>1일 <strong>1만원</strong> 한도.</p>'}),
+    a({title:'재택·유연근무 운영 정책', cat:'leave', tags:['유연근무','재택'], author:'sora@ccon.co.kr', status:'pending', views:0, created:now-1*D, updated:now-1*D,
+      body:'<h2>유연근무</h2><p>코어타임 10:00~16:00, 출근 08~10시 자율.</p>'}),
+  ];
+  return {users, arts, requests:[], searches:0, sessionEmail:null};
+}
+function loadLocal(){try{const r=JSON.parse(localStorage.getItem(LS));if(r&&r.users){if(!r.requests)r.requests=[];return r;}}catch(e){}const s=seed();localStorage.setItem(LS,JSON.stringify(s));return s;}
+function save(){if(SUPA)return;localStorage.setItem(LS,JSON.stringify(DB));}
+function me(){return DB.users.find(u=>u.email===DB.sessionEmail)||null;}
+function isAdmin(){const m=me();return m&&m.role==='admin';}
+
+function recentKey(){return 'circle_recent_'+(DB.sessionEmail||'x');}
+function getRecent(){try{return JSON.parse(localStorage.getItem(recentKey()))||[];}catch(e){return[];}}
+function setRecent(a){localStorage.setItem(recentKey(),JSON.stringify(a));}
+
+function mapUser(r){return {email:r.email,name:r.name,dept:r.dept||'',role:r.role,status:r.status,joined:new Date(r.joined).getTime()};}
+function mapArt(r){return {id:r.id,title:r.title,cat:r.cat,tags:r.tags||[],body:r.body||'',attach:r.attach||[],
+  author:r.author_email,status:r.status,views:r.views||0,reject:r.reject||'',history:r.history||[],
+  created:new Date(r.created_at).getTime(),updated:new Date(r.updated_at).getTime()};}
+function mapReq(r){return {id:r.id,keyword:r.keyword,note:r.note||'',by:r.by_email,byName:r.by_name||'',status:r.status,created:new Date(r.created_at).getTime()};}
+async function refetch(){
+  if(!SUPA)return;
+  const [{data:us},{data:ar},{data:rq}]=await Promise.all([
+    sb.from('profiles').select('*'),
+    sb.from('articles').select('*'),
+    sb.from('review_requests').select('*')
+  ]);
+  DB.users=(us||[]).map(mapUser);
+  DB.arts=(ar||[]).map(mapArt);
+  DB.requests=(rq||[]).map(mapReq);
+}
+
+async function dataCreateArticle(d){
+  const m=me();
+  if(SUPA){
+    const row={title:d.title,body:d.body,cat:d.cat,tags:d.tags,attach:d.attach,
+      author_email:m.email,author_name:m.name,status:isAdmin()?'approved':'pending'};
+    const {data,error}=await sb.from('articles').insert(row).select().single();
+    if(error){toast('저장 실패: '+error.message);throw error;}
+    DB.arts.push(mapArt(data));return;
+  }
+  const a={id:'d'+Math.random().toString(36).slice(2,9),...d,author:m.email,
+    status:isAdmin()?'approved':'pending',views:0,created:Date.now(),updated:Date.now(),history:[],reject:''};
+  DB.arts.push(a);save();
+}
+async function dataUpdateArticle(id,patch){
+  if(SUPA){
+    const m={updated_at:new Date().toISOString()};
+    if('title' in patch)m.title=patch.title; if('body' in patch)m.body=patch.body;
+    if('cat' in patch)m.cat=patch.cat; if('tags' in patch)m.tags=patch.tags;
+    if('attach' in patch)m.attach=patch.attach; if('status' in patch)m.status=patch.status;
+    if('reject' in patch)m.reject=patch.reject; if('history' in patch)m.history=patch.history;
+    const {data,error}=await sb.from('articles').update(m).eq('id',id).select().single();
+    if(error){toast('저장 실패: '+error.message);throw error;}
+    const i=DB.arts.findIndex(x=>x.id===id);if(i>=0)DB.arts[i]=mapArt(data);return;
+  }
+  const a=DB.arts.find(x=>x.id===id);Object.assign(a,patch,{updated:Date.now()});save();
+}
+async function dataDeleteArticle(id){
+  if(SUPA){const {error}=await sb.from('articles').delete().eq('id',id);if(error){toast('삭제 실패: '+error.message);throw error;}}
+  DB.arts=DB.arts.filter(x=>x.id!==id);save();
+}
+async function dataIncViews(id){
+  const a=DB.arts.find(x=>x.id===id);if(a)a.views++;
+  if(SUPA){try{await sb.rpc('increment_views',{aid:id});}catch(e){}}else save();
+}
+async function dataSetProfile(email,patch){
+  if(SUPA){const {error}=await sb.from('profiles').update(patch).eq('email',email);if(error){toast('처리 실패: '+error.message);throw error;}}
+  const u=DB.users.find(x=>x.email===email);if(u)Object.assign(u,patch);save();
+}
+async function dataCreateRequest(keyword,note){
+  const m=me();
+  if(SUPA){
+    const {data,error}=await sb.from('review_requests').insert({keyword,note,by_email:m.email,by_name:m.name,status:'open'}).select().single();
+    if(error){toast('요청 실패: '+error.message);throw error;}
+    DB.requests.push(mapReq(data));return;
+  }
+  DB.requests.push({id:'r'+Math.random().toString(36).slice(2,9),keyword,note,by:m.email,byName:m.name,status:'open',created:Date.now()});save();
+}
+async function dataUpdateRequest(id,patch){
+  if(SUPA){const {error}=await sb.from('review_requests').update(patch).eq('id',id);if(error){toast('처리 실패: '+error.message);throw error;}}
+  const r=DB.requests.find(x=>x.id===id);if(r)Object.assign(r,patch);save();
+}
+async function dataDeleteRequest(id){
+  if(SUPA){const {error}=await sb.from('review_requests').delete().eq('id',id);if(error){toast('삭제 실패: '+error.message);throw error;}}
+  DB.requests=DB.requests.filter(x=>x.id!==id);save();
+}
+function openRequests(){return DB.requests.filter(r=>r.status==='open');}
+
+function visibleArts(){const m=me();return DB.arts.filter(d=>d.status==='approved'||(m&&(d.author===m.email||m.role==='admin')));}
+function pendingDocs(){return DB.arts.filter(d=>d.status==='pending');}
+function pendingUsers(){return DB.users.filter(u=>u.status==='pending');}
+function refreshAdminDot(){
+  const n=pendingDocs().length+pendingUsers().length+openRequests().length;
+  const dot=document.getElementById('adminDot');
+  if(isAdmin()&&n>0){dot.classList.remove('hidden');dot.textContent=n;}else{dot.classList.add('hidden');}
+}
+
+/* ====================== AUTH ====================== */
+function authMsg(id,txt,cls){const el=document.getElementById(id);if(el)el.innerHTML=txt?`<div class="msg ${cls}">${txt}</div>`:'';}
+function showAuthScreen(){document.getElementById('app').classList.add('hidden');document.getElementById('gate').classList.add('hidden');document.getElementById('auth').classList.remove('hidden');}
+
+function configureAuthUI(){
+  const note=document.getElementById('oauthNote');
+  if(SUPA){
+    note.innerHTML='회사 Google Workspace('+CONFIG.ALLOWED_DOMAIN+') 계정만 로그인할 수 있습니다.';
+  }else{
+    note.innerHTML='⚙️ 데모 모드입니다. 버튼을 누르면 신규 직원의 첫 로그인 화면을 체험할 수 있어요. 실제 구글 로그인은 CONFIG에 Supabase 값을 입력하면 켜집니다.';
+  }
+}
+
+async function googleLogin(){
+  if(SUPA){
+    await sb.auth.signInWithOAuth({provider:'google',options:{
+      queryParams:{hd:CONFIG.ALLOWED_DOMAIN, prompt:'select_account'},
+      redirectTo:location.origin+location.pathname
+    }});
+    return;
+  }
+  // 데모: 신규 직원의 첫 구글 로그인을 모사
+  let u=DB.users.find(x=>x.email==='you@ccon.co.kr');
+  if(!u){u={email:'you@ccon.co.kr',name:'데모 사용자',dept:'',role:'user',status:'new',joined:Date.now()};DB.users.push(u);}
+  DB.sessionEmail=u.email;save();routeUser();
+}
+function routeUser(){
+  const m=me();
+  if(!m)return showAuthScreen();
+  if(m.status==='new')return showApply();
+  if(m.status==='pending')return showGate('pending');
+  if(m.status==='removed')return showGate('removed');
+  enterApp();
+}
+function showApply(){
+  document.getElementById('auth').classList.add('hidden');
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('gate').classList.remove('hidden');
+  const m=me();
+  document.getElementById('gateInner').innerHTML=`<div class="ic">👋</div><h2>환영합니다${m&&m.name?', '+esc(m.name)+'님':''}</h2>
+    <p>써클커넥션 Wiki는 승인된 임직원만 이용할 수 있습니다.<br>지금 가입 신청을 하시겠습니까?</p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button class="btn grad" onclick="applyMembership()">가입 신청하기</button>
+      <button class="btn ghost" onclick="logout()">취소</button>
+    </div>
+    ${SUPA?'':'<div style="margin-top:16px"><a href="#" style="font-size:12.5px;color:var(--soft)" onclick="demoAdmin();return false">데모: 관리자(Nathan)로 로그인 →</a></div>'}`;
+}
+async function applyMembership(){
+  if(SUPA){
+    try{await sb.rpc('apply_membership');}catch(e){return toast('신청 처리 실패: '+(e.message||e));}
+    await refetch();
+  }else{
+    const u=me();if(u)u.status='pending';save();
+  }
+  showGate('pending');
+}
+function demoAdmin(){DB.sessionEmail=CONFIG.OWNER_EMAIL;save();enterApp();}
+
+function enterApp(){
+  document.getElementById('auth').classList.add('hidden');
+  document.getElementById('gate').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  const m=me();
+  document.getElementById('avatar').textContent=m.name.slice(0,1);
+  document.getElementById('meName').textContent=m.name;
+  document.getElementById('meEmail').textContent=m.email;
+  document.getElementById('meRole').textContent=m.role==='admin'?'👑 총괄 관리자':'일반 사용자 · '+(m.dept||'');
+  document.getElementById('adminNav').classList.toggle('hidden',m.role!=='admin');
+  refreshAdminDot();go('home');
+}
+function showGate(kind){
+  document.getElementById('auth').classList.add('hidden');
+  document.getElementById('app').classList.add('hidden');
+  const g=document.getElementById('gate');g.classList.remove('hidden');
+  const inner=document.getElementById('gateInner');
+  const demoLink=SUPA?'':'<div style="margin-top:16px"><a href="#" style="font-size:12.5px;color:var(--soft)" onclick="demoAdmin();return false">데모: 관리자(Nathan)로 로그인하여 승인하기 →</a></div>';
+  if(kind==='pending'){
+    inner.innerHTML=`<div class="ic">⏳</div><h2>승인 대기 중입니다</h2>
+      <p>가입 신청이 접수되었습니다. 총괄 관리자가 승인하면 바로 이용할 수 있습니다.<br>승인 후 다시 로그인해주세요.</p>
+      <button class="btn ghost" onclick="logout()">로그아웃</button>${demoLink}`;
+  }else{
+    inner.innerHTML=`<div class="ic">🚫</div><h2>접근이 제한되었습니다</h2>
+      <p>이 계정은 현재 이용이 제한된 상태입니다. 총괄 관리자에게 문의해주세요.</p>
+      <button class="btn ghost" onclick="logout()">로그아웃</button>`;
+  }
+}
+async function logout(){
+  if(SUPA){try{await sb.auth.signOut();}catch(e){}}
+  DB.sessionEmail=null;save();location.reload();
+}
+
+async function liveBoot(){
+  sb=window.supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY);
+  sb.auth.onAuthStateChange((_e,session)=>{handleSession(session);});
+  const {data:{session}}=await sb.auth.getSession();
+  handleSession(session);
+}
+let gating=false;
+async function handleSession(session){
+  if(gating)return;gating=true;
+  try{
+    if(!session){showAuthScreen();return;}
+    DB.sessionEmail=(session.user.email||'').toLowerCase();
+    await refetch();
+    const m=me();
+    if(!m){await sb.auth.signOut();DB.sessionEmail=null;showAuthScreen();
+      authMsg('loginMsg','회사 계정(@'+CONFIG.ALLOWED_DOMAIN+')만 이용할 수 있습니다.','err');return;}
+    if(m.status==='new'){showApply();return;}
+    if(m.status==='pending'){showGate('pending');return;}
+    if(m.status==='removed'){showGate('removed');return;}
+    enterApp();
+  }finally{gating=false;}
+}
+
+/* ====================== HELPERS ====================== */
+function val(id){return document.getElementById(id).value;}
+function clear(...ids){ids.forEach(i=>document.getElementById(i).value='');}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function stripHtml(h){const d=document.createElement('div');d.innerHTML=h;return d.textContent||'';}
+function fmtDate(t){const d=new Date(t);return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;}
+function ago(t){const s=(Date.now()-t)/1000;if(s<3600)return Math.floor(s/60)+'분 전';if(s<86400)return Math.floor(s/3600)+'시간 전';return Math.floor(s/86400)+'일 전';}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2600);}
+function toggleMenu(){document.getElementById('userMenu').classList.toggle('hidden');}
+function openERP(){if(CONFIG.ERP_URL){window.open(CONFIG.ERP_URL,'_blank','noopener,noreferrer');}else{toast('ERP 주소가 아직 설정되지 않았습니다. index.html의 CONFIG에서 ERP_URL을 입력하세요.');}}
+document.addEventListener('click',e=>{const m=document.getElementById('userMenu');if(m&&!m.classList.contains('hidden')&&!m.contains(e.target)&&e.target.id!=='avatar')m.classList.add('hidden');});
+function hl(text,q){if(!q)return esc(text);const i=text.toLowerCase().indexOf(q.toLowerCase());if(i<0)return esc(text);return esc(text.slice(0,i))+'<mark>'+esc(text.slice(i,i+q.length))+'</mark>'+esc(text.slice(i+q.length));}
+function authorName(email){const u=DB.users.find(x=>x.email===email);return u?u.name:(email||'').split('@')[0];}
+
+/* ====================== ROUTER ====================== */
+let STATE={q:'',catFilter:'',sort:'rel',dashTab:'users',view:''};
+function go(view,arg){
+  document.getElementById('userMenu').classList.add('hidden');
+  STATE.view=view;
+  if(view==='home')renderHome();
+  else if(view==='search')renderSearch(arg!==undefined?arg:STATE.q);
+  else if(view==='category')renderCategory(arg);
+  else if(view==='article')renderArticle(arg);
+  else if(view==='editor')renderEditor(arg);
+  else if(view==='dash'){if(!isAdmin())return toast('관리자만 접근할 수 있습니다.');renderDash();}
+  else if(view==='mine')renderMine();
+  window.scrollTo(0,0);
+}
+
+/* ====================== HOME ====================== */
+function renderHome(){
+  const arts=visibleArts().filter(d=>d.status==='approved');
+  const recent=getRecent().map(id=>arts.find(a=>a.id===id)).filter(Boolean).slice(0,4);
+  const fresh=[...arts].sort((a,b)=>b.created-a.created).slice(0,4);
+  const hot=['연차 신청','예산 가이드','체크리스트','온보딩','정산'];
+  document.getElementById('view').innerHTML=`
+    <div class="home-hero">
+      <div class="eyebrow">◐ 써클커넥션 내부 지식 허브</div>
+      <h1>무엇을 찾고 계신가요?</h1>
+      <p>회사 정책부터 행사 운영 가이드까지, 검색 한 번으로.</p>
+      <div class="home-search">
+        <span class="ic">🔍</span>
+        <input id="homeSearch" autocomplete="off" placeholder="예: 연차 신청, 예산 가이드, 체크리스트…"
+          oninput="onHomeSearch(this.value)" onkeydown="if(event.key==='Enter')runSearch(this.value)">
+        <div id="homeSuggest"></div>
+      </div>
+      <div class="hot">${hot.map(h=>`<a href="#" onclick="runSearch('${h}');return false">${h}</a>`).join('')}</div>
+    </div>
+    <div class="section-title">📂 카테고리</div>
+    <div class="cat-grid">
+      ${CATEGORIES.map(c=>{const n=arts.filter(a=>a.cat===c.id).length;return `
+        <div class="cat-card" onclick="go('category','${c.id}')">
+          <div class="emoji">${c.emoji}</div><h3>${c.name}</h3><p>${c.desc}</p>
+          <div class="cnt">${n}개 문서 →</div></div>`}).join('')}
+    </div>
+    ${recent.length?`<div class="section-title">🕘 최근 본 문서</div><div class="doc-grid">${recent.map(docCard).join('')}</div>`:''}
+    <div class="section-title">✨ 새로 올라온 문서</div>
+    <div class="doc-grid">${fresh.length?fresh.map(docCard).join(''):'<div class="empty">아직 문서가 없습니다. 첫 글을 작성해보세요.</div>'}</div>`;
+}
+function docCard(d){return `
+  <div class="doc-card" onclick="openDoc('${d.id}')">
+    <div class="cat">${catName(d.cat)}</div>
+    <h4>${esc(d.title)} ${d.status!=='approved'?`<span class="pill ${d.status}">${d.status==='pending'?'승인 대기':'반려'}</span>`:''}</h4>
+    <div class="excerpt">${esc(stripHtml(d.body).slice(0,90))}</div>
+    <div class="meta"><span>👁 ${d.views}</span><span>${ago(d.updated)}</span></div></div>`;
+}
+function buildSuggest(q){
+  q=q.trim();if(!q)return '';
+  const arts=visibleArts().filter(d=>d.status==='approved');const ql=q.toLowerCase();
+  const scored=arts.map(d=>{let s=0;const t=d.title.toLowerCase();
+    if(t.startsWith(ql))s+=100;else if(t.includes(ql))s+=60;
+    if(d.tags.some(x=>x.toLowerCase().includes(ql)))s+=40;
+    if(stripHtml(d.body).toLowerCase().includes(ql))s+=15;return {d,s};
+  }).filter(x=>x.s>0).sort((a,b)=>b.s-a.s).slice(0,6);
+  if(!scored.length)return `<div class="suggest"><div class="s-empty">"${esc(q)}"에 대한 결과가 없습니다. Enter로 전체 검색</div></div>`;
+  return `<div class="suggest">${scored.map(({d})=>`
+    <div class="s-item" onclick="openDoc('${d.id}')"><span class="ico">📄</span>
+      <div style="flex:1"><div>${hl(d.title,q)}</div></div><span class="tag">${catName(d.cat)}</span></div>`).join('')}</div>`;
+}
+function onHomeSearch(q){document.getElementById('homeSuggest').innerHTML=buildSuggest(q);}
+function onTopSearch(q){if(STATE.view==='search')renderSearch(q);}
+function runSearch(q){STATE.q=q;DB.searches++;go('search',q);}
+
+/* ====================== SEARCH ====================== */
+function renderSearch(q){
+  STATE.view='search';STATE.q=q;const ql=(q||'').trim().toLowerCase();
+  let res=visibleArts().filter(d=>d.status==='approved').map(d=>{
+    let s=0;const t=d.title.toLowerCase(),body=stripHtml(d.body).toLowerCase();
+    if(t.includes(ql))s+=60;if(d.tags.some(x=>x.toLowerCase().includes(ql)))s+=40;
+    if(body.includes(ql))s+=20;s+=d.views*0.05;return {d,s};
+  }).filter(x=>!ql||x.s>0);
+  if(STATE.catFilter)res=res.filter(x=>x.d.cat===STATE.catFilter);
+  if(STATE.sort==='rel')res.sort((a,b)=>b.s-a.s);
+  if(STATE.sort==='new')res.sort((a,b)=>b.d.updated-a.d.updated);
+  if(STATE.sort==='views')res.sort((a,b)=>b.d.views-a.d.views);
+  document.getElementById('view').innerHTML=`
+    <div class="results-head">
+      <h2>'${esc(q||'전체')}' 검색 결과 <span style="color:var(--muted);font-weight:600">${res.length}건</span></h2>
+      <div class="filters">
+        <select onchange="STATE.catFilter=this.value;renderSearch(STATE.q)">
+          <option value="">전체 카테고리</option>
+          ${CATEGORIES.map(c=>`<option value="${c.id}" ${STATE.catFilter===c.id?'selected':''}>${c.name}</option>`).join('')}
+        </select>
+        <select onchange="STATE.sort=this.value;renderSearch(STATE.q)">
+          <option value="rel" ${STATE.sort==='rel'?'selected':''}>관련도순</option>
+          <option value="new" ${STATE.sort==='new'?'selected':''}>최신순</option>
+          <option value="views" ${STATE.sort==='views'?'selected':''}>조회수순</option>
+        </select>
+      </div>
+    </div>
+    ${res.length?res.map(({d})=>`
+      <div class="result-item" onclick="openDoc('${d.id}')">
+        <div class="cat" style="font-size:12px;color:var(--brand);font-weight:700">${catName(d.cat)}</div>
+        <h4>${hl(d.title,ql)}</h4>
+        <div class="excerpt">${hl(stripHtml(d.body).slice(0,140),ql)}…</div>
+        <div class="tags">${d.tags.map(t=>`<span class="t">#${esc(t)}</span>`).join('')}</div>
+        <div class="meta" style="display:flex;gap:12px;font-size:12px;color:var(--soft);margin-top:9px">
+          <span>👁 ${d.views}</span><span>✍ ${authorName(d.author)}</span><span>${fmtDate(d.updated)}</span></div>
+      </div>`).join('')+`<div style="text-align:center;margin-top:20px"><button class="btn outline sm" onclick="askReview()">🔎 원하는 내용을 못 찾으셨나요? 검토 요청하기</button></div>`:`<div class="empty">'${esc(q||'')}'에 대한 검색 결과가 없습니다.<div style="margin-top:16px"><button class="btn grad sm" onclick="askReview()">🔎 이 키워드 검토 요청하기</button></div></div>`}`;
+  const ts=document.getElementById('topSearch');if(ts&&ts.value!==q)ts.value=q;
+}
+
+/* ====================== CATEGORY ====================== */
+function renderCategory(catId){
+  const c=CATEGORIES.find(x=>x.id===catId);
+  const docs=visibleArts().filter(d=>d.cat===catId&&d.status==='approved').sort((a,b)=>b.updated-a.updated);
+  document.getElementById('view').innerHTML=`
+    <div class="breadcrumb"><a href="#" onclick="go('home');return false">홈</a> › ${c.name}</div>
+    <div class="page-head"><h1>${c.emoji} ${c.name}</h1><p>${c.desc}</p></div>
+    <div class="tags" style="margin-bottom:20px">${c.subs.map(s=>`<span class="t" style="font-size:12.5px;padding:5px 13px">${s}</span>`).join('')}</div>
+    ${docs.length?`<div class="doc-grid">${docs.map(docCard).join('')}</div>`:`<div class="empty">이 카테고리에 아직 문서가 없습니다.</div>`}`;
+}
+
+/* ====================== ARTICLE ====================== */
+async function openDoc(id){
+  const d=DB.arts.find(x=>x.id===id);
+  if(d&&d.status==='approved'){await dataIncViews(id);setRecent([id,...getRecent().filter(x=>x!==id)].slice(0,8));}
+  go('article',id);
+}
+function renderArticle(id){
+  const d=DB.arts.find(x=>x.id===id);if(!d)return go('home');
+  const m=me();const mine=d.author===m.email;
+  document.getElementById('view').innerHTML=`
+    <div class="article">
+      <div class="breadcrumb"><a href="#" onclick="go('home');return false">홈</a> › <a href="#" onclick="go('category','${d.cat}');return false">${catName(d.cat)}</a></div>
+      <h1>${esc(d.title)} ${d.status!=='approved'?`<span class="pill ${d.status}" style="font-size:12px;vertical-align:middle">${d.status==='pending'?'승인 대기':'반려됨'}</span>`:''}</h1>
+      <div class="a-meta">
+        <span>✍ ${authorName(d.author)}</span><span>📅 ${fmtDate(d.updated)} 업데이트</span><span>👁 ${d.views}</span>
+        ${d.tags.map(t=>`<span class="t" style="background:#f2f2f7;padding:3px 10px;border-radius:999px;font-size:12px">#${esc(t)}</span>`).join('')}
+      </div>
+      ${d.status==='rejected'&&d.reject?`<div class="msg err" style="margin-bottom:18px">반려 사유: ${esc(d.reject)}</div>`:''}
+      ${d.status==='pending'?`<div class="msg info" style="margin-bottom:18px">이 문서는 관리자 승인 대기 중입니다. 승인 후 전체 공개됩니다.</div>`:''}
+      <div class="a-body">${d.body}</div>
+      <div class="a-actions">
+        ${(mine||isAdmin())?`<button class="btn ghost sm" onclick="go('editor','${d.id}')">✏️ 수정</button>`:''}
+        ${isAdmin()&&d.status==='pending'?`<button class="btn ok sm" onclick="approveDoc('${d.id}')">✅ 승인</button>
+          <button class="btn danger sm" onclick="askReject('${d.id}')">⛔ 반려</button>`:''}
+        ${isAdmin()?`<button class="btn outline sm" onclick="toggleHide('${d.id}')">${d.status==='hidden'?'공개로 전환':'🙈 비공개'}</button>
+          <button class="btn danger sm" onclick="delDoc('${d.id}')">🗑 삭제</button>`:''}
+      </div>
+      ${d.history.length?`<div class="history"><h3>수정 이력</h3>${d.history.slice().reverse().map(h=>`<div class="h-row">• ${fmtDate(h.t)} — ${esc(h.by)} ${esc(h.note||'수정')}</div>`).join('')}</div>`:''}
+    </div>`;
+}
+
+/* ====================== EDITOR ====================== */
+let EDIT_ID=null, ATTACH=[];
+function renderEditor(id){
+  EDIT_ID=id||null;ATTACH=[];
+  const d=id?DB.arts.find(x=>x.id===id):null;
+  if(d&&d.attach)ATTACH=[...d.attach];
+  document.getElementById('view').innerHTML=`
+    <div class="editor">
+      <h2>${d?'문서 수정':'새 문서 작성'}</h2>
+      <div class="field"><label>제목</label><input id="edTitle" placeholder="문서 제목" value="${d?esc(d.title):''}"></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div class="field" style="flex:1;min-width:180px"><label>카테고리</label>
+          <select id="edCat">${CATEGORIES.map(c=>`<option value="${c.id}" ${d&&d.cat===c.id?'selected':''}>${c.name}</option>`).join('')}</select></div>
+        <div class="field" style="flex:1;min-width:180px"><label>태그 (쉼표로 구분)</label>
+          <input id="edTags" placeholder="예: 휴가, 신청, 연차" value="${d?esc(d.tags.join(', ')):''}"></div>
+      </div>
+      <div class="field"><label>본문</label>
+        <div class="toolbar">
+          <button onclick="fmt('formatBlock','h2')">H2</button>
+          <button onclick="fmt('formatBlock','h3')">H3</button><span class="sep"></span>
+          <button onclick="fmt('bold')" style="font-weight:800">B</button>
+          <button onclick="fmt('italic')" style="font-style:italic">I</button>
+          <button onclick="fmt('underline')" style="text-decoration:underline">U</button><span class="sep"></span>
+          <button onclick="fmt('insertUnorderedList')">• 목록</button>
+          <button onclick="fmt('insertOrderedList')">1. 번호</button>
+          <button onclick="fmt('formatBlock','p')">본문</button>
+        </div>
+        <div id="edBody" class="wysiwyg" contenteditable="true" data-ph="내용을 입력하세요. 상단 버튼으로 서식을 적용할 수 있습니다.">${d?d.body:''}</div>
+      </div>
+      <div class="field"><label>파일 첨부 (파일명 기록)</label>
+        <input id="edFile" type="file" multiple onchange="addAttach(this.files)">
+        <div id="attachList" class="attach-list"></div>
+      </div>
+      <div class="editor-actions">
+        <button class="btn grad" onclick="submitDoc()">${d?'수정 제출':'업로드 (승인 요청)'}</button>
+        <button class="btn ghost" onclick="saveDraft()">임시 저장</button>
+        <button class="btn ghost" onclick="go('home')">취소</button>
+      </div>
+      <div class="note">제출된 문서는 ${isAdmin()?'관리자 권한으로 즉시 공개됩니다.':'<b>총괄 관리자 승인</b> 후 전체에 공개됩니다.'}</div>
+    </div>`;
+  renderAttach();
+  const dr=loadDraft();if(!id&&dr){if(confirm('임시 저장된 글이 있습니다. 불러올까요?')){document.getElementById('edTitle').value=dr.title;document.getElementById('edBody').innerHTML=dr.body;document.getElementById('edTags').value=dr.tags;document.getElementById('edCat').value=dr.cat;}}
+}
+function fmt(cmd,arg){document.execCommand(cmd,false,arg||null);document.getElementById('edBody').focus();}
+function addAttach(files){[...files].forEach(f=>ATTACH.push({name:f.name,size:f.size}));renderAttach();}
+function renderAttach(){document.getElementById('attachList').innerHTML=ATTACH.map((a,i)=>`<div class="a-item">📎 ${esc(a.name)} <small style="color:var(--muted)">${(a.size/1024).toFixed(0)}KB</small><button onclick="ATTACH.splice(${i},1);renderAttach()">삭제</button></div>`).join('');}
+function collectDoc(){return {title:val('edTitle').trim(),cat:val('edCat'),
+  tags:val('edTags').split(',').map(s=>s.trim()).filter(Boolean),
+  body:document.getElementById('edBody').innerHTML.trim(),attach:[...ATTACH]};}
+async function submitDoc(){
+  const data=collectDoc();
+  if(!data.title)return toast('제목을 입력해주세요.');
+  if(!stripHtml(data.body).trim())return toast('본문을 입력해주세요.');
+  const admin=isAdmin(),m=me();
+  try{
+    if(EDIT_ID){
+      const d=DB.arts.find(x=>x.id===EDIT_ID);
+      const history=[...(d.history||[]),{t:Date.now(),by:m.name,note:'내용 수정'}];
+      await dataUpdateArticle(EDIT_ID,{...data,status:admin?'approved':'pending',history});
+      toast(admin?'문서를 수정했습니다.':'수정 사항이 승인 요청되었습니다.');
+    }else{
+      await dataCreateArticle(data);
+      toast(admin?'문서를 발행했습니다.':'업로드 완료! 관리자 승인 후 공개됩니다.');
+    }
+  }catch(e){return;}
+  clearDraft();refreshAdminDot();go(admin?'home':'mine');
+}
+function saveDraft(){localStorage.setItem(LS+'_draft',JSON.stringify(collectDoc()));toast('임시 저장되었습니다.');}
+function loadDraft(){try{return JSON.parse(localStorage.getItem(LS+'_draft'));}catch(e){return null;}}
+function clearDraft(){localStorage.removeItem(LS+'_draft');}
+
+/* ====================== MINE + POINTS ====================== */
+const POINT_NEW=10, POINT_UPDATE=2, COUPON_COST=30;
+function pointsFor(email){
+  let pts=0,posts=0,updates=0;
+  DB.arts.filter(d=>d.author===email&&d.status==='approved').forEach(d=>{posts++;pts+=POINT_NEW;const u=(d.history||[]).length;updates+=u;pts+=u*POINT_UPDATE;});
+  return {pts,posts,updates};
+}
+function myPoints(){return pointsFor(me().email);}
+function requestCoupon(cost,name){
+  const {pts}=myPoints();
+  if(pts<cost)return toast(`${cost}P가 필요합니다. (현재 ${pts}P)`);
+  toast(`${name} 신청 완료! 관리자 확인 후 지급됩니다. ☕`);
+}
+function rewardCard(emoji,name,desc,cost,pts){
+  const ok=pts>=cost;
+  return `<div style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:18px;display:flex;align-items:center;gap:14px">
+    <div style="width:48px;height:48px;border-radius:14px;background:var(--grad-soft);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">${emoji}</div>
+    <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14.5px">${name}</div><div style="font-size:12.5px;color:var(--muted)">${desc} · ${cost}P</div></div>
+    <button class="btn ${ok?'grad':'ghost'} sm" ${ok?'':'disabled style="opacity:.55;cursor:not-allowed"'} onclick="requestCoupon(${cost},'${name}')">${ok?'신청하기':cost+'P 필요'}</button>
+  </div>`;
+}
+function renderMine(){
+  const m=me();const docs=DB.arts.filter(d=>d.author===m.email).sort((a,b)=>b.updated-a.updated);
+  const {pts,posts,updates}=myPoints();
+  const pct=Math.min(100,Math.round(pts/COUPON_COST*100));const can=pts>=COUPON_COST;
+  document.getElementById('view').innerHTML=`
+    <div class="page-head"><h1>내 작성 글</h1><p>총 ${docs.length}개 · 문서 상태와 포인트를 확인하세요.</p></div>
+
+    <div style="background:var(--grad-soft);border:1px solid #ececfb;border-radius:20px;padding:24px;margin-bottom:24px;display:flex;gap:28px;align-items:center;flex-wrap:wrap">
+      <div style="flex:1;min-width:240px">
+        <div style="font-size:12.5px;color:var(--brand-ink);font-weight:700;letter-spacing:.02em">⭐ 내 포인트</div>
+        <div style="font-size:36px;font-weight:800;letter-spacing:-.04em;color:var(--brand-ink);line-height:1.1;margin-top:2px">${pts}<span style="font-size:17px;font-weight:700"> P</span></div>
+        <div style="font-size:12.5px;color:#6a6a7a;margin-top:3px">문서 발행 ${posts}개 (×${POINT_NEW}P) · 승인된 수정 ${updates}회 (×${POINT_UPDATE}P)</div>
+        <div style="height:9px;background:#fff;border-radius:99px;margin-top:14px;overflow:hidden;border:1px solid #e6e2f8">
+          <div style="height:100%;width:${pct}%;background:var(--grad);transition:width .4s"></div>
+        </div>
+        <div style="font-size:12px;color:#6a6a7a;margin-top:7px">${can?'🎉 이제 커피 쿠폰을 신청할 수 있어요!':`커피 쿠폰까지 ${COUPON_COST-pts}P 남았어요 (목표 ${COUPON_COST}P)`}</div>
+      </div>
+    </div>
+
+    <div class="section-title">🎁 포인트 리워드</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:8px">
+      ${rewardCard('☕','아메리카노 쿠폰','사내 카페테리아',COUPON_COST,pts)}
+      ${rewardCard('🍰','커피 + 디저트 세트','사내 카페테리아',50,pts)}
+    </div>
+    <div class="note" style="color:var(--soft);font-size:12px;margin-bottom:8px">포인트는 문서가 공개(승인)되면 적립됩니다. 쿠폰 신청 내역은 관리자에게 전달됩니다.</div>
+
+    <div class="section-title">📄 내 문서</div>
+    ${docs.length?`<table class="tbl"><thead><tr><th>제목</th><th>카테고리</th><th>상태</th><th>조회</th><th>수정일</th><th></th></tr></thead><tbody>
+      ${docs.map(d=>`<tr>
+        <td><a href="#" onclick="go('article','${d.id}');return false">${esc(d.title)}</a></td>
+        <td>${catName(d.cat)}</td>
+        <td><span class="pill ${d.status}">${({approved:'공개',pending:'승인 대기',rejected:'반려',hidden:'비공개'})[d.status]}</span></td>
+        <td>${d.views}</td><td>${fmtDate(d.updated)}</td>
+        <td><button class="btn ghost sm" onclick="go('editor','${d.id}')">수정</button></td>
+      </tr>`).join('')}</tbody></table>`:`<div class="empty">아직 작성한 글이 없습니다. <a href="#" onclick="go('editor');return false">새 글 작성하기</a></div>`}`;
+}
+
+/* ====================== DASHBOARD ====================== */
+function renderDash(){
+  STATE.view='dash';
+  const pu=pendingUsers(),pd=pendingDocs();
+  const approved=DB.arts.filter(d=>d.status==='approved').length;
+  const activeU=DB.users.filter(u=>u.status==='active').length;
+  const totalViews=DB.arts.reduce((s,d)=>s+d.views,0);
+  const totalPts=DB.users.reduce((s,u)=>s+pointsFor(u.email).pts,0);
+  document.getElementById('view').innerHTML=`
+    <div class="page-head"><h1>👑 관리자 대시보드</h1><p>가입자 승인, 콘텐츠 검토, 활동 통계를 관리합니다.</p></div>
+    <div class="stat-grid">
+      <div class="stat"><div class="n">${activeU}</div><div class="l">가입자</div></div>
+      <div class="stat"><div class="n">${approved}</div><div class="l">공개 문서</div></div>
+      <div class="stat"><div class="n" style="color:var(--warn)">${pd.length}</div><div class="l">승인 대기 문서</div></div>
+      <div class="stat"><div class="n" style="color:var(--warn)">${pu.length}</div><div class="l">가입 승인 대기</div></div>
+      <div class="stat"><div class="n">${totalViews}</div><div class="l">누적 조회수</div></div>
+      <div class="stat"><div class="n">${totalPts}<span style="font-size:15px"> P</span></div><div class="l">누적 발행 포인트</div></div>
+    </div>
+    <div class="dash-tabs">
+      <button class="${STATE.dashTab==='users'?'active':''}" onclick="STATE.dashTab='users';renderDash()">가입 승인 ${pu.length?`<span class="b">${pu.length}</span>`:''}</button>
+      <button class="${STATE.dashTab==='members'?'active':''}" onclick="STATE.dashTab='members';renderDash()">사용자 관리</button>
+      <button class="${STATE.dashTab==='content'?'active':''}" onclick="STATE.dashTab='content';renderDash()">콘텐츠 승인 ${pd.length?`<span class="b">${pd.length}</span>`:''}</button>
+      <button class="${STATE.dashTab==='reviews'?'active':''}" onclick="STATE.dashTab='reviews';renderDash()">검토 요청 ${openRequests().length?`<span class="b">${openRequests().length}</span>`:''}</button>
+      <button class="${STATE.dashTab==='all'?'active':''}" onclick="STATE.dashTab='all';renderDash()">전체 콘텐츠</button>
+    </div>
+    <div id="dashBody"></div>`;
+  renderDashBody();
+}
+function renderDashBody(){
+  const b=document.getElementById('dashBody');
+  if(STATE.dashTab==='users'){
+    const pu=pendingUsers();
+    b.innerHTML=pu.length?`<table class="tbl"><thead><tr><th>이름</th><th>이메일</th><th>부서</th><th>신청일</th><th>처리</th></tr></thead><tbody>
+      ${pu.map(u=>`<tr><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td>${esc(u.dept||'-')}</td><td>${ago(u.joined)}</td>
+        <td><div class="row-actions"><button class="btn ok sm" onclick="approveUser('${u.email}')">승인</button>
+        <button class="btn danger sm" onclick="rejectUser('${u.email}')">거절</button></div></td></tr>`).join('')}</tbody></table>`
+      :`<div class="empty">승인 대기 중인 가입 신청이 없습니다.</div>`;
+  }else if(STATE.dashTab==='members'){
+    const us=DB.users.filter(u=>u.status==='active'||u.status==='removed');
+    b.innerHTML=`<table class="tbl"><thead><tr><th>이름</th><th>이메일</th><th>부서</th><th>권한</th><th>포인트</th><th>상태</th><th>관리</th></tr></thead><tbody>
+      ${us.map(u=>`<tr><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td>${esc(u.dept||'-')}</td>
+        <td>${u.role==='admin'?'👑 관리자':'일반'}</td>
+        <td style="font-weight:700;color:var(--brand-ink)">${pointsFor(u.email).pts} P</td>
+        <td><span class="pill ${u.status==='active'?'approved':'rejected'}">${u.status==='active'?'활성':'퇴장'}</span></td>
+        <td><div class="row-actions">${u.email!==me().email?`
+            <button class="btn outline sm" onclick="toggleRole('${u.email}')">${u.role==='admin'?'관리자 해제':'관리자 지정'}</button>
+            ${u.status==='active'?`<button class="btn danger sm" onclick="removeUser('${u.email}')">강제 퇴장</button>`:`<button class="btn ok sm" onclick="restoreUser('${u.email}')">복구</button>`}
+          `:'<small style="color:var(--muted)">본인</small>'}</div></td></tr>`).join('')}</tbody></table>`;
+  }else if(STATE.dashTab==='content'){
+    const pd=pendingDocs();
+    b.innerHTML=pd.length?pd.map(d=>`
+      <div class="result-item" style="cursor:default">
+        <div style="display:flex;align-items:start;gap:12px;flex-wrap:wrap">
+          <div style="flex:1">
+            <div class="cat" style="color:var(--brand);font-weight:700;font-size:12px">${catName(d.cat)} · ${authorName(d.author)} · ${ago(d.created)}</div>
+            <h4 style="margin:6px 0"><a href="#" onclick="go('article','${d.id}');return false">${esc(d.title)}</a></h4>
+            <div class="excerpt" style="color:var(--muted);font-size:13.5px">${esc(stripHtml(d.body).slice(0,120))}…</div>
+          </div>
+          <div class="row-actions"><button class="btn ok sm" onclick="approveDoc('${d.id}')">승인</button>
+            <button class="btn danger sm" onclick="askReject('${d.id}')">반려</button></div>
+        </div></div>`).join(''):`<div class="empty">검토할 콘텐츠가 없습니다.</div>`;
+  }else if(STATE.dashTab==='reviews'){
+    const rs=[...DB.requests].sort((a,b)=>(a.status===b.status?b.created-a.created:(a.status==='open'?-1:1)));
+    b.innerHTML=rs.length?rs.map(r=>`
+      <div class="result-item" style="cursor:default;${r.status==='done'?'opacity:.6':''}">
+        <div style="display:flex;align-items:start;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;color:var(--muted)">${esc(r.byName||authorName(r.by))} · ${ago(r.created)} ${r.status==='done'?'<span class="pill approved" style="margin-left:6px">처리완료</span>':'<span class="pill pending" style="margin-left:6px">대기</span>'}</div>
+            <h4 style="margin:6px 0;font-size:16px">🔎 ${esc(r.keyword)}</h4>
+            ${r.note?`<div class="excerpt" style="color:var(--muted);font-size:13.5px">${esc(r.note)}</div>`:''}
+          </div>
+          <div class="row-actions">
+            <button class="btn ghost sm" onclick="go('editor')">글 작성</button>
+            ${r.status==='open'?`<button class="btn ok sm" onclick="resolveRequest('${r.id}')">완료 처리</button>`:`<button class="btn outline sm" onclick="reopenRequest('${r.id}')">되돌리기</button>`}
+            <button class="btn danger sm" onclick="deleteRequest('${r.id}')">삭제</button>
+          </div>
+        </div>
+      </div>`).join(''):`<div class="empty">접수된 검토 요청이 없습니다.</div>`;
+  }else if(STATE.dashTab==='all'){
+    const ds=[...DB.arts].sort((a,b)=>b.updated-a.updated);
+    b.innerHTML=`<table class="tbl"><thead><tr><th>제목</th><th>카테고리</th><th>작성자</th><th>상태</th><th>조회</th><th>관리</th></tr></thead><tbody>
+      ${ds.map(d=>`<tr>
+        <td><a href="#" onclick="go('article','${d.id}');return false">${esc(d.title)}</a></td>
+        <td>${catName(d.cat)}</td><td>${authorName(d.author)}</td>
+        <td><span class="pill ${d.status}">${({approved:'공개',pending:'대기',rejected:'반려',hidden:'비공개'})[d.status]}</span></td>
+        <td>${d.views}</td>
+        <td><div class="row-actions"><button class="btn outline sm" onclick="toggleHide('${d.id}')">${d.status==='hidden'?'공개':'비공개'}</button>
+          <button class="btn danger sm" onclick="delDoc('${d.id}')">삭제</button></div></td></tr>`).join('')}</tbody></table>`;
+  }
+}
+
+/* ====== admin actions ====== */
+async function approveUser(email){try{await dataSetProfile(email,{status:'active'});}catch(e){return;}refreshAdminDot();renderDash();toast('가입을 승인했습니다.');}
+async function rejectUser(email){if(!confirm('가입 신청을 거절(차단)하시겠습니까?'))return;try{await dataSetProfile(email,{status:'removed'});}catch(e){return;}refreshAdminDot();renderDash();toast('가입 신청을 거절했습니다.');}
+async function toggleRole(email){const u=DB.users.find(x=>x.email===email);const toAdmin=u.role!=='admin';if(!confirm(toAdmin?`${u.name} 님을 총괄관리자로 지정하시겠습니까?\n모든 콘텐츠·사용자·승인 권한을 갖게 됩니다.`:`${u.name} 님의 관리자 권한을 해제하시겠습니까?`))return;try{await dataSetProfile(email,{role:toAdmin?'admin':'user'});}catch(e){return;}renderDash();toast(toAdmin?'관리자로 지정했습니다.':'관리자 권한을 해제했습니다.');}
+async function removeUser(email){if(!confirm('해당 사용자를 강제 퇴장시키겠습니까? 로그인이 차단됩니다.'))return;try{await dataSetProfile(email,{status:'removed'});}catch(e){return;}renderDash();toast('사용자를 퇴장 처리했습니다.');}
+async function restoreUser(email){try{await dataSetProfile(email,{status:'active'});}catch(e){return;}renderDash();toast('사용자를 복구했습니다.');}
+async function approveDoc(id){try{await dataUpdateArticle(id,{status:'approved'});}catch(e){return;}refreshAdminDot();if(STATE.view==='dash')renderDash();else go('article',id);toast('콘텐츠를 승인했습니다.');}
+let REJECT_ID=null;
+function askReject(id){REJECT_ID=id;showModal(`<h3>콘텐츠 반려</h3><p style="color:var(--muted);font-size:13.5px">작성자에게 전달할 반려 사유를 입력하세요.</p>
+  <textarea id="rejectReason" placeholder="예: 예산 수치가 최신 기준과 다릅니다. 2026년 단가로 수정 바랍니다."></textarea>
+  <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">취소</button><button class="btn danger" onclick="confirmReject()">반려</button></div>`);}
+async function confirmReject(){const r=val('rejectReason')||'';try{await dataUpdateArticle(REJECT_ID,{status:'rejected',reject:r});}catch(e){return;}closeModal();refreshAdminDot();if(STATE.view==='dash')renderDash();else go('article',REJECT_ID);toast('콘텐츠를 반려했습니다.');}
+async function toggleHide(id){const d=DB.arts.find(x=>x.id===id);const ns=d.status==='hidden'?'approved':'hidden';try{await dataUpdateArticle(id,{status:ns});}catch(e){return;}if(STATE.view==='dash')renderDash();else go('article',id);toast(ns==='hidden'?'비공개로 전환했습니다.':'공개로 전환했습니다.');}
+async function delDoc(id){if(!confirm('이 문서를 삭제하시겠습니까? 되돌릴 수 없습니다.'))return;try{await dataDeleteArticle(id);}catch(e){return;}refreshAdminDot();if(STATE.view==='dash')renderDash();else go('home');toast('문서를 삭제했습니다.');}
+async function resolveRequest(id){try{await dataUpdateRequest(id,{status:'done'});}catch(e){return;}refreshAdminDot();renderDash();toast('검토 요청을 완료 처리했습니다.');}
+async function reopenRequest(id){try{await dataUpdateRequest(id,{status:'open'});}catch(e){return;}refreshAdminDot();renderDash();toast('검토 요청을 다시 열었습니다.');}
+async function deleteRequest(id){if(!confirm('이 검토 요청을 삭제하시겠습니까?'))return;try{await dataDeleteRequest(id);}catch(e){return;}refreshAdminDot();renderDash();toast('검토 요청을 삭제했습니다.');}
+
+/* ====== modal ====== */
+function showModal(html){const bg=document.createElement('div');bg.className='modal-bg';bg.id='modalBg';bg.innerHTML=`<div class="modal">${html}</div>`;bg.onclick=e=>{if(e.target===bg)closeModal();};document.body.appendChild(bg);}
+function closeModal(){const m=document.getElementById('modalBg');if(m)m.remove();}
+
+/* ====== 검토 요청 ====== */
+function askReview(k){
+  const kw=(k!==undefined?k:(STATE.q||''));
+  showModal(`<h3>🔎 검토 요청</h3>
+    <p style="color:var(--muted);font-size:13.5px">찾으시는 내용이 없나요? 필요한 키워드를 관리자에게 보내 문서 작성을 요청할 수 있습니다.</p>
+    <div class="field" style="margin-top:12px"><label>키워드 / 찾는 내용</label><input id="rvKw" value="${esc(kw)}" placeholder="예: 출장비 정산 규정"></div>
+    <textarea id="rvNote" placeholder="어떤 내용이 필요한지 자세히 적어주세요 (선택)"></textarea>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">취소</button><button class="btn grad" onclick="submitReview()">검토 요청 보내기</button></div>`);
+  setTimeout(()=>{const el=document.getElementById('rvKw');if(el&&!el.value)el.focus();},50);
+}
+async function submitReview(){
+  const kw=val('rvKw').trim();if(!kw)return toast('찾는 키워드를 입력해주세요.');
+  const note=(document.getElementById('rvNote').value||'').trim();
+  try{await dataCreateRequest(kw,note);}catch(e){return;}
+  closeModal();refreshAdminDot();toast('검토 요청이 접수되었습니다. 관리자가 확인 후 반영합니다.');
+}
+
+/* ====================== INIT ====================== */
+(function init(){
+  configureAuthUI();
+  if(SUPA){
+    let tries=0;const w=setInterval(()=>{
+      if(window.supabase&&window.supabase.createClient){clearInterval(w);liveBoot();}
+      else if(++tries>40){clearInterval(w);toast('Supabase 라이브러리를 불러오지 못했습니다.');}
+    },150);
+  }else{
+    DB=loadLocal();
+  }
+})();
+</script>
+</body>
+</html>
