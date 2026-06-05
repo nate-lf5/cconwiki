@@ -132,8 +132,8 @@
     font-weight:800;border-radius:10px;padding:0 5px;line-height:16px;box-shadow:0 0 0 2px #fff}
   .avatar{width:36px;height:36px;border-radius:50%;background:var(--grad);color:#fff;display:flex;
     align-items:center;justify-content:center;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(110,80,240,.3)}
-  .menu{position:absolute;right:26px;top:60px;background:#fff;border:1px solid var(--border);border-radius:14px;
-    box-shadow:var(--sh-lg);min-width:220px;padding:8px;z-index:40}
+  .menu{position:fixed;right:26px;top:62px;background:#fff;border:1px solid var(--border);border-radius:14px;
+    box-shadow:var(--sh-lg);min-width:220px;padding:8px;z-index:45}
   .menu .who{padding:10px 12px;border-bottom:1px solid var(--line);margin-bottom:6px}
   .menu .who b{display:block;font-size:14.5px}.menu .who small{color:var(--muted);font-size:12.5px}
   .menu>button{display:block;width:100%;text-align:left;padding:10px 12px;border-radius:9px;color:#3a3a44;font-size:14px}
@@ -228,6 +228,7 @@
   .article .a-body p{margin:11px 0}.article .a-body ul,.article .a-body ol{margin:11px 0 11px 22px}
   .article .a-body li{margin:5px 0}.article .a-body strong{font-weight:700;color:var(--text)}
   .a-body a,.wysiwyg a{color:var(--brand);text-decoration:underline;font-weight:500;word-break:break-all}
+  .a-body img,.wysiwyg img{max-width:100%;height:auto;border-radius:10px;display:block;margin:12px 0}
   .a-body .embed,.wysiwyg .embed{position:relative;padding-top:56.25%;margin:16px 0;border-radius:12px;overflow:hidden;background:#000;max-width:640px}
   .a-body .embed iframe,.wysiwyg .embed iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
   .article .a-actions{display:flex;gap:8px;margin-top:30px;flex-wrap:wrap}
@@ -319,7 +320,7 @@
     .home-hero h1{font-size:24px}
     .home-search input{font-size:15px;padding:14px 16px 14px 46px}
     .article,.editor{padding:20px;border-radius:16px}
-    .menu{right:12px}
+    .menu{right:12px;top:56px}
     .doc-grid{grid-template-columns:1fr}
     .results-head h2,.page-head h1{font-size:19px}
     table.tbl{display:block;overflow-x:auto;white-space:nowrap}
@@ -904,10 +905,11 @@ function renderEditor(id){
           <button onclick="fmt('insertUnorderedList')">• 목록</button>
           <button onclick="fmt('insertOrderedList')">1. 번호</button>
           <button onclick="fmt('formatBlock','p')">본문</button><span class="sep"></span>
+          <button onclick="insertImage()" title="이미지 삽입 (자동 크기 조정)">🖼 이미지</button>
           <button onclick="insertLink()" title="링크 삽입 (YouTube·외부 사이트 등)">🔗 링크</button>
           <button onclick="insertVideo()" title="YouTube 영상 삽입">▶ 영상</button>
         </div>
-        <div id="edBody" class="wysiwyg" contenteditable="true" data-ph="내용을 입력하세요. 상단 버튼으로 서식을 적용할 수 있습니다.">${d?d.body:''}</div>
+        <div id="edBody" class="wysiwyg" contenteditable="true" onpaste="onEdPaste(event)" data-ph="내용을 입력하세요. 상단 버튼으로 서식을 적용할 수 있습니다. (이미지는 붙여넣거나 '이미지' 버튼으로 넣으면 자동 축소됩니다)">${d?d.body:''}</div>
       </div>
       <div class="field"><label>파일 첨부 (파일명 기록)</label>
         <input id="edFile" type="file" multiple onchange="addAttach(this.files)">
@@ -942,6 +944,36 @@ function insertVideo(){
   if(!m)return toast('유효한 YouTube 주소가 아닙니다. 영상 페이지 주소를 붙여넣어 주세요.');
   const html=`<div class="embed"><iframe src="https://www.youtube.com/embed/${m[1]}" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen loading="lazy"></iframe></div><p><br></p>`;
   document.getElementById('edBody').focus();document.execCommand('insertHTML',false,html);
+}
+function insertImage(){
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';
+  inp.onchange=()=>{if(inp.files&&inp.files[0])imgToEditor(inp.files[0]);};
+  inp.click();
+}
+function imgToEditor(file){
+  if(!/^image\//.test(file.type))return;
+  const r=new FileReader();
+  r.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=1280;let w=img.width,h=img.height;
+      if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}
+      const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      let data;try{data=cv.toDataURL('image/jpeg',0.82);}catch(e){data=r.result;}
+      const ed=document.getElementById('edBody');ed.focus();
+      document.execCommand('insertHTML',false,`<img src="${data}"><p><br></p>`);
+    };
+    img.onerror=()=>toast('이미지를 불러오지 못했습니다.');
+    img.src=r.result;
+  };
+  r.readAsDataURL(file);
+}
+function onEdPaste(e){
+  const items=(e.clipboardData&&e.clipboardData.items)||[];
+  for(const it of items){
+    if(it.type&&it.type.indexOf('image')===0){const f=it.getAsFile();if(f){e.preventDefault();imgToEditor(f);return;}}
+  }
 }
 function addAttach(files){[...files].forEach(f=>ATTACH.push({name:f.name,size:f.size}));renderAttach();}
 function renderAttach(){document.getElementById('attachList').innerHTML=ATTACH.map((a,i)=>`<div class="a-item">📎 ${esc(a.name)} <small style="color:var(--muted)">${(a.size/1024).toFixed(0)}KB</small><button onclick="ATTACH.splice(${i},1);renderAttach()">삭제</button></div>`).join('');}
