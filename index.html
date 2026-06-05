@@ -263,6 +263,9 @@
   .dash-tabs button{padding:12px 16px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;font-size:14px}
   .dash-tabs button.active{color:var(--brand);border-bottom-color:var(--brand)}
   .dash-tabs button .b{background:var(--danger);color:#fff;font-size:11px;border-radius:var(--r-pill);padding:0 7px;margin-left:6px;font-weight:800}
+  .bulkbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .bulkbar:empty{display:none}
+  table.tbl input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--brand)}
   .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:15px;margin-bottom:28px}
   .stat{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:20px;box-shadow:var(--sh-sm)}
   .stat .n{font-size:28px;font-weight:800;letter-spacing:-.04em}
@@ -1054,8 +1057,10 @@ function renderDash(){
     <div id="dashBody"></div>`;
   renderDashBody();
 }
+let SELECTED=new Set(), DASH_DOCS=[];
 function renderDashBody(){
   const b=document.getElementById('dashBody');
+  if(STATE.dashTab!=='all')SELECTED.clear();
   if(STATE.dashTab==='users'){
     const pu=pendingUsers();
     b.innerHTML=pu.length?`<table class="tbl"><thead><tr><th>이름</th><th>이메일</th><th>부서</th><th>신청일</th><th>처리</th></tr></thead><tbody>
@@ -1113,19 +1118,57 @@ function renderDashBody(){
         <td><span style="font-size:16px;margin-right:7px">${c.emoji}</span><b>${esc(c.name)}</b></td>
         <td style="color:var(--muted)">${esc(c.desc||'-')}</td>
         <td>${n}</td>
-        <td><div class="row-actions"><button class="btn outline sm" onclick="askCategory('${c.id}')">수정</button><button class="btn danger sm" onclick="deleteCategory('${c.id}')">삭제</button></div></td>
+        <td><div class="row-actions"><button class="btn ghost sm" onclick="openCatDocs('${c.id}')">문서 관리</button><button class="btn outline sm" onclick="askCategory('${c.id}')">수정</button><button class="btn danger sm" onclick="deleteCategory('${c.id}')">삭제</button></div></td>
       </tr>`}).join('')}</tbody></table>`;
   }else if(STATE.dashTab==='all'){
-    const ds=[...DB.arts].sort((a,b)=>b.updated-a.updated);
-    b.innerHTML=`<table class="tbl"><thead><tr><th>제목</th><th>카테고리</th><th>작성자</th><th>상태</th><th>조회</th><th>관리</th></tr></thead><tbody>
+    DASH_DOCS=[...DB.arts].filter(d=>!STATE.allCatFilter||d.cat===STATE.allCatFilter).sort((a,b)=>b.updated-a.updated);
+    const ds=DASH_DOCS;
+    b.innerHTML=`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <select onchange="STATE.allCatFilter=this.value;SELECTED.clear();renderDash()">
+          <option value="">전체 카테고리 (${DB.arts.length})</option>
+          ${CATEGORIES.map(c=>`<option value="${c.id}" ${STATE.allCatFilter===c.id?'selected':''}>${esc(c.name)} (${DB.arts.filter(d=>d.cat===c.id).length})</option>`).join('')}
+        </select>
+        <div id="bulkBar" class="bulkbar"></div>
+      </div>
+      ${ds.length?`<table class="tbl"><thead><tr>
+        <th style="width:36px"><input type="checkbox" id="selAll" onclick="toggleAll(this.checked)"></th>
+        <th>제목</th><th>카테고리</th><th>작성자</th><th>상태</th><th>조회</th><th>관리</th></tr></thead><tbody>
       ${ds.map(d=>`<tr>
+        <td><input type="checkbox" class="rowchk" ${SELECTED.has(d.id)?'checked':''} onclick="toggleSel('${d.id}',this.checked)"></td>
         <td><a href="#" onclick="go('article','${d.id}');return false">${esc(d.title)}</a></td>
         <td>${catName(d.cat)}</td><td>${authorName(d.author)}</td>
         <td><span class="pill ${d.status}">${({approved:'공개',pending:'대기',rejected:'반려',hidden:'비공개'})[d.status]}</span></td>
         <td>${d.views}</td>
         <td><div class="row-actions"><button class="btn outline sm" onclick="toggleHide('${d.id}')">${d.status==='hidden'?'공개':'비공개'}</button>
-          <button class="btn danger sm" onclick="delDoc('${d.id}')">삭제</button></div></td></tr>`).join('')}</tbody></table>`;
+          <button class="btn danger sm" onclick="delDoc('${d.id}')">삭제</button></div></td></tr>`).join('')}</tbody></table>`
+      :`<div class="empty">이 조건의 문서가 없습니다.</div>`}`;
+    renderBulkBar();
   }
+}
+function openCatDocs(id){STATE.dashTab='all';STATE.allCatFilter=id;SELECTED.clear();renderDash();}
+function toggleSel(id,on){if(on)SELECTED.add(id);else SELECTED.delete(id);renderBulkBar();}
+function toggleAll(on){if(on)DASH_DOCS.forEach(d=>SELECTED.add(d.id));else SELECTED.clear();document.querySelectorAll('.rowchk').forEach(c=>c.checked=on);renderBulkBar();}
+function renderBulkBar(){
+  const bar=document.getElementById('bulkBar');if(!bar)return;
+  const n=SELECTED.size;
+  if(!n){bar.innerHTML='';return;}
+  bar.innerHTML=`<span style="font-weight:700;color:var(--brand-ink)">${n}개 선택</span>
+    <button class="btn danger sm" onclick="bulkDelete()">선택 삭제</button>
+    <select id="moveCat" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px"><option value="">카테고리 이동…</option>${CATEGORIES.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select>
+    <button class="btn outline sm" onclick="bulkMove()">이동</button>
+    <button class="btn ghost sm" onclick="SELECTED.clear();renderDash()">선택 해제</button>`;
+}
+async function bulkDelete(){
+  const ids=[...SELECTED];if(!ids.length)return;
+  if(!confirm(`선택한 문서 ${ids.length}개를 삭제하시겠습니까? 되돌릴 수 없습니다.`))return;
+  for(const id of ids){try{await dataDeleteArticle(id);}catch(e){}}
+  SELECTED.clear();refreshAdminDot();renderDash();toast(`${ids.length}개 문서를 삭제했습니다.`);
+}
+async function bulkMove(){
+  const t=document.getElementById('moveCat').value;if(!t)return toast('이동할 카테고리를 선택하세요.');
+  const ids=[...SELECTED];if(!ids.length)return;
+  for(const id of ids){try{await dataUpdateArticle(id,{cat:t});}catch(e){}}
+  SELECTED.clear();renderDash();toast(`${ids.length}개 문서를 '${catName(t)}'(으)로 이동했습니다.`);
 }
 
 /* ====== admin actions ====== */
