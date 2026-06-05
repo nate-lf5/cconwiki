@@ -329,7 +329,8 @@ const CONFIG = {
   ALLOWED_DOMAIN:    'ccon.co.kr',
   OWNER_EMAIL:       'nate@ccon.co.kr',
   SERVICE_NAME:      '써클커넥션 Wiki',
-  ERP_URL:           'https://erp.ccon.co.kr'    // ★ ERP 주소(미정·임시값). 확정되면 이 한 줄만 바꾸세요
+  ERP_URL:           'https://erp.ccon.co.kr',   // ★ ERP 주소(미정·임시값). 확정되면 이 한 줄만 바꾸세요
+  LOGO_URL:          'data:image/png;base64,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'    // ★ 회사 로고(코드에 직접 내장됨)
 };
 const SUPA = !!(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
 let sb = null;
@@ -598,8 +599,11 @@ function authorName(email){const u=DB.users.find(x=>x.email===email);return u?u.
 
 /* ====================== ROUTER ====================== */
 let STATE={q:'',catFilter:'',sort:'rel',dashTab:'users',view:''};
+let LAST_LIST={view:'home',arg:undefined};
+function goBack(){go(LAST_LIST.view,LAST_LIST.arg);}
 function go(view,arg){
   document.getElementById('userMenu').classList.add('hidden');
+  if(['home','search','category','mine','dash'].includes(view))LAST_LIST={view,arg};
   STATE.view=view;
   if(view==='home')renderHome();
   else if(view==='search')renderSearch(arg!==undefined?arg:STATE.q);
@@ -725,6 +729,7 @@ function renderArticle(id){
   const d=DB.arts.find(x=>x.id===id);if(!d)return go('home');
   const m=me();const mine=d.author===m.email;
   document.getElementById('view').innerHTML=`
+    <button class="btn ghost sm" style="margin-bottom:16px" onclick="goBack()">← 목록으로 가기</button>
     <div class="article">
       <div class="breadcrumb"><a href="#" onclick="go('home');return false">홈</a> › <a href="#" onclick="go('category','${d.cat}');return false">${catName(d.cat)}</a></div>
       <h1>${esc(d.title)} ${d.status!=='approved'?`<span class="pill ${d.status}" style="font-size:12px;vertical-align:middle">${d.status==='pending'?'승인 대기':'반려됨'}</span>`:''}</h1>
@@ -1006,8 +1011,17 @@ async function submitReview(){
 }
 
 /* ====================== INIT ====================== */
+function applyLogo(){
+  if(!CONFIG.LOGO_URL)return;
+  document.querySelectorAll('.mark').forEach(el=>{
+    el.style.background='#fff';el.style.padding='3px';
+    el.innerHTML=`<img src="${CONFIG.LOGO_URL}" alt="logo" style="width:100%;height:100%;object-fit:contain;border-radius:inherit">`;
+  });
+  if(CONFIG.SERVICE_NAME)document.title=CONFIG.SERVICE_NAME;
+}
 (function init(){
   configureAuthUI();
+  applyLogo();
   if(SUPA){
     let tries=0;const w=setInterval(()=>{
       if(window.supabase&&window.supabase.createClient){clearInterval(w);liveBoot();}
