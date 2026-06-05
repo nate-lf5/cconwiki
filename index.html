@@ -418,8 +418,7 @@ const DEFAULT_CATS=[
   {id:'edu', name:'교육 및 자료', emoji:'📚', desc:'매뉴얼·템플릿·외부 자료'},
 ];
 let CATEGORIES=DEFAULT_CATS.slice();
-function rebuildCats(custom){const ids=new Set(DEFAULT_CATS.map(c=>c.id));CATEGORIES=DEFAULT_CATS.concat((custom||[]).filter(c=>c&&c.id&&!ids.has(c.id)));}
-function isDefaultCat(id){return DEFAULT_CATS.some(c=>c.id===id);}
+function rebuildCats(list){CATEGORIES=(list&&list.length)?list.slice():DEFAULT_CATS.slice();}
 const catName=id=>(CATEGORIES.find(c=>c.id===id)||{name:'기타'}).name;
 
 let DB={users:[],arts:[],requests:[],categories:[],searches:0,sessionEmail:null};
@@ -450,9 +449,9 @@ function seed(){
     a({title:'재택·유연근무 운영 정책', cat:'leave', tags:['유연근무','재택'], author:'sora@ccon.co.kr', status:'pending', views:0, created:now-1*D, updated:now-1*D,
       body:'<h2>유연근무</h2><p>코어타임 10:00~16:00, 출근 08~10시 자율.</p>'}),
   ];
-  return {users, arts, requests:[], categories:[], searches:0, sessionEmail:null};
+  return {users, arts, requests:[], categories:DEFAULT_CATS.map(c=>({id:c.id,name:c.name,emoji:c.emoji,desc:c.desc})), searches:0, sessionEmail:null};
 }
-function loadLocal(){try{const r=JSON.parse(localStorage.getItem(LS));if(r&&r.users){if(!r.requests)r.requests=[];if(!r.categories)r.categories=[];return r;}}catch(e){}const s=seed();localStorage.setItem(LS,JSON.stringify(s));return s;}
+function loadLocal(){try{const r=JSON.parse(localStorage.getItem(LS));if(r&&r.users){if(!r.requests)r.requests=[];if(!r.categories||!r.categories.length)r.categories=DEFAULT_CATS.map(c=>({id:c.id,name:c.name,emoji:c.emoji,desc:c.desc}));return r;}}catch(e){}const s=seed();localStorage.setItem(LS,JSON.stringify(s));return s;}
 function save(){if(SUPA)return;localStorage.setItem(LS,JSON.stringify(DB));}
 function me(){return DB.users.find(u=>u.email===DB.sessionEmail)||null;}
 function isAdmin(){const m=me();return m&&m.role==='admin';}
@@ -477,7 +476,17 @@ async function refetch(){
   DB.users=(us||[]).map(mapUser);
   DB.arts=(ar||[]).map(mapArt);
   DB.requests=(rq||[]).map(mapReq);
-  try{const {data:ct,error:ce}=await sb.from('categories').select('*');DB.categories=(!ce&&ct)?ct.map(mapCat):[];}catch(e){DB.categories=[];}
+  try{
+    let {data:ct,error:ce}=await sb.from('categories').select('*').order('created_at',{ascending:true});
+    if(ce){DB.categories=[];}
+    else{
+      if((!ct||!ct.length)&&isAdmin()){
+        await sb.from('categories').upsert(DEFAULT_CATS.map(c=>({id:c.id,name:c.name,emoji:c.emoji,description:c.desc})),{onConflict:'id'});
+        const r2=await sb.from('categories').select('*').order('created_at',{ascending:true});ct=r2.data;
+      }
+      DB.categories=(ct||[]).map(mapCat);
+    }
+  }catch(e){DB.categories=[];}
   rebuildCats(DB.categories);
 }
 
@@ -544,6 +553,15 @@ async function dataCreateCategory(cat){
     if(error){toast(/relation|exist|schema/i.test(error.message)?'카테고리 테이블이 아직 없습니다. 안내드린 SQL을 다시 실행해주세요.':'추가 실패: '+error.message);throw error;}
     DB.categories.push(mapCat(data));
   }else{DB.categories.push(cat);save();}
+  rebuildCats(DB.categories);
+}
+async function dataUpdateCategory(id,patch){
+  if(SUPA){
+    const row={};if('name' in patch)row.name=patch.name;if('emoji' in patch)row.emoji=patch.emoji;if('desc' in patch)row.description=patch.desc;
+    const {error}=await sb.from('categories').update(row).eq('id',id);
+    if(error){toast('수정 실패: '+error.message);throw error;}
+  }
+  const c=DB.categories.find(x=>x.id===id);if(c)Object.assign(c,patch);save();
   rebuildCats(DB.categories);
 }
 async function dataDeleteCategory(id){
@@ -1067,14 +1085,14 @@ function renderDashBody(){
       </div>`).join(''):`<div class="empty">접수된 검토 요청이 없습니다.</div>`;
   }else if(STATE.dashTab==='categories'){
     b.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
-        <div style="color:var(--muted);font-size:13.5px">카테고리를 추가하면 글 작성 시 선택지와 사이드바에 바로 반영됩니다.</div>
-        <button class="btn grad sm" onclick="askAddCategory()">+ 카테고리 추가</button></div>
+        <div style="color:var(--muted);font-size:13.5px">카테고리를 추가·수정·삭제할 수 있습니다. 변경은 사이드바와 글 작성 화면에 바로 반영됩니다.</div>
+        <button class="btn grad sm" onclick="askCategory()">+ 카테고리 추가</button></div>
       <table class="tbl"><thead><tr><th>카테고리</th><th>설명</th><th>문서 수</th><th>관리</th></tr></thead><tbody>
-      ${CATEGORIES.map(c=>{const n=DB.arts.filter(d=>d.cat===c.id).length;const def=isDefaultCat(c.id);return `<tr>
-        <td><span style="font-size:16px;margin-right:7px">${c.emoji}</span><b>${esc(c.name)}</b>${def?' <span class="pill hidden" style="margin-left:6px">기본</span>':''}</td>
+      ${CATEGORIES.map(c=>{const n=DB.arts.filter(d=>d.cat===c.id).length;return `<tr>
+        <td><span style="font-size:16px;margin-right:7px">${c.emoji}</span><b>${esc(c.name)}</b></td>
         <td style="color:var(--muted)">${esc(c.desc||'-')}</td>
         <td>${n}</td>
-        <td>${def?'<small style="color:var(--soft)">삭제 불가</small>':`<button class="btn danger sm" onclick="deleteCategory('${c.id}')">삭제</button>`}</td>
+        <td><div class="row-actions"><button class="btn outline sm" onclick="askCategory('${c.id}')">수정</button><button class="btn danger sm" onclick="deleteCategory('${c.id}')">삭제</button></div></td>
       </tr>`}).join('')}</tbody></table>`;
   }else if(STATE.dashTab==='all'){
     const ds=[...DB.arts].sort((a,b)=>b.updated-a.updated);
@@ -1106,22 +1124,29 @@ async function delDoc(id){if(!confirm('이 문서를 삭제하시겠습니까? �
 async function resolveRequest(id){try{await dataUpdateRequest(id,{status:'done'});}catch(e){return;}refreshAdminDot();renderDash();toast('검토 요청을 완료 처리했습니다.');}
 async function reopenRequest(id){try{await dataUpdateRequest(id,{status:'open'});}catch(e){return;}refreshAdminDot();renderDash();toast('검토 요청을 다시 열었습니다.');}
 async function deleteRequest(id){if(!confirm('이 검토 요청을 삭제하시겠습니까?'))return;try{await dataDeleteRequest(id);}catch(e){return;}refreshAdminDot();renderDash();toast('검토 요청을 삭제했습니다.');}
-function askAddCategory(){showModal(`<h3>카테고리 추가</h3>
-  <p style="color:var(--muted);font-size:13px">추가한 카테고리는 글 작성 시 선택 목록과 사이드바에 바로 나타납니다.</p>
-  <div style="display:flex;gap:10px;margin-top:10px"><div class="field" style="width:74px"><label>이모지</label><input id="ncEmoji" maxlength="3" value="📁" style="text-align:center"></div>
-  <div class="field" style="flex:1"><label>카테고리 이름</label><input id="ncName" placeholder="예: 마케팅"></div></div>
-  <div class="field"><label>설명 (선택)</label><input id="ncDesc" placeholder="짧은 설명"></div>
-  <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">취소</button><button class="btn grad" onclick="submitCategory()">추가하기</button></div>`);}
+let CAT_EDIT_ID=null;
+function askCategory(id){
+  CAT_EDIT_ID=id||null;
+  const c=id?CATEGORIES.find(x=>x.id===id):null;
+  showModal(`<h3>${c?'카테고리 수정':'카테고리 추가'}</h3>
+    <p style="color:var(--muted);font-size:13px">${c?'이름·이모지·설명을 수정합니다. 분류된 문서는 그대로 유지됩니다.':'추가한 카테고리는 글 작성 시 선택 목록과 사이드바에 바로 나타납니다.'}</p>
+    <div style="display:flex;gap:10px;margin-top:10px"><div class="field" style="width:74px"><label>이모지</label><input id="ncEmoji" maxlength="3" value="${c?esc(c.emoji):'📁'}" style="text-align:center"></div>
+    <div class="field" style="flex:1"><label>카테고리 이름</label><input id="ncName" value="${c?esc(c.name):''}" placeholder="예: 마케팅"></div></div>
+    <div class="field"><label>설명 (선택)</label><input id="ncDesc" value="${c?esc(c.desc):''}" placeholder="짧은 설명"></div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">취소</button><button class="btn grad" onclick="submitCategory()">${c?'저장':'추가하기'}</button></div>`);
+}
 async function submitCategory(){
   const name=val('ncName').trim();if(!name)return toast('카테고리 이름을 입력하세요.');
   const emoji=(val('ncEmoji')||'').trim()||'📁';const desc=val('ncDesc').trim();
-  const id='c'+Math.random().toString(36).slice(2,8);
-  try{await dataCreateCategory({id,name,emoji,desc});}catch(e){return;}
-  closeModal();renderDash();toast('카테고리를 추가했습니다.');
+  try{
+    if(CAT_EDIT_ID){await dataUpdateCategory(CAT_EDIT_ID,{name,emoji,desc});}
+    else{await dataCreateCategory({id:'c'+Math.random().toString(36).slice(2,8),name,emoji,desc});}
+  }catch(e){return;}
+  closeModal();renderDash();toast(CAT_EDIT_ID?'카테고리를 수정했습니다.':'카테고리를 추가했습니다.');
 }
 async function deleteCategory(id){
-  const used=DB.arts.some(d=>d.cat===id);
-  if(!confirm(used?'이 카테고리를 쓰는 문서가 있습니다. 삭제하면 그 문서는 "기타"로 표시됩니다. 계속할까요?':'이 카테고리를 삭제하시겠습니까?'))return;
+  const used=DB.arts.filter(d=>d.cat===id).length;
+  if(!confirm(used?`이 카테고리를 쓰는 문서 ${used}개가 있습니다. 삭제하면 그 문서들은 "기타"로 표시됩니다. 계속할까요?`:'이 카테고리를 삭제하시겠습니까?'))return;
   try{await dataDeleteCategory(id);}catch(e){return;}
   renderDash();toast('카테고리를 삭제했습니다.');
 }
