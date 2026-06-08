@@ -641,6 +641,7 @@ async function applyMembership(){
 function demoAdmin(){DB.sessionEmail=CONFIG.OWNER_EMAIL;save();enterApp();}
 
 function enterApp(){
+  ENTERED=true;
   document.getElementById('auth').classList.add('hidden');
   document.getElementById('gate').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
@@ -675,11 +676,16 @@ async function logout(){
 
 async function liveBoot(){
   sb=window.supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_ANON_KEY);
-  sb.auth.onAuthStateChange((_e,session)=>{handleSession(session);});
+  sb.auth.onAuthStateChange((event,session)=>{
+    if(event==='SIGNED_OUT'||!session){ENTERED=false;DB.sessionEmail=null;showAuthScreen();return;}
+    const em=(session.user.email||'').toLowerCase();
+    if(ENTERED&&em===DB.sessionEmail)return;   // 이미 입장한 동일 사용자 → 화면 유지(탭 전환·토큰 갱신 시 홈으로 튕기지 않음)
+    handleSession(session);
+  });
   const {data:{session}}=await sb.auth.getSession();
   handleSession(session);
 }
-let gating=false;
+let ENTERED=false, gating=false;
 async function handleSession(session){
   if(gating)return;gating=true;
   try{
@@ -721,7 +727,8 @@ function authorName(email){const u=DB.users.find(x=>x.email===email);return u?u.
 /* ====================== ROUTER ====================== */
 let STATE={q:'',catFilter:'',sort:'rel',dashTab:'users',view:''};
 let LAST_LIST={view:'home',arg:undefined};
-function goBack(){go(LAST_LIST.view,LAST_LIST.arg);}
+let SUPPRESS_PUSH=false, HISTINIT=false;
+function goBack(){if(history.length>1)history.back();else go(LAST_LIST.view,LAST_LIST.arg);}
 function go(view,arg){
   document.getElementById('userMenu').classList.add('hidden');
   if(['home','search','category','mine','dash'].includes(view))LAST_LIST={view,arg};
@@ -735,7 +742,18 @@ function go(view,arg){
   else if(view==='dash'){if(!isAdmin())return toast('관리자만 접근할 수 있습니다.');renderDash();}
   else if(view==='mine')renderMine();
   window.scrollTo(0,0);
+  if(!SUPPRESS_PUSH){
+    const st={v:view,a:(arg===undefined?null:arg)};
+    const cur=history.state;
+    if(!HISTINIT){history.replaceState(st,'');HISTINIT=true;}
+    else if(!(cur&&cur.v===view&&cur.a===st.a))history.pushState(st,'');
+  }
 }
+window.addEventListener('popstate',e=>{
+  const s=e.state;if(!s||!s.v)return;
+  SUPPRESS_PUSH=true;
+  try{go(s.v, s.a===null?undefined:s.a);}finally{SUPPRESS_PUSH=false;}
+});
 
 /* ====================== HOME ====================== */
 function renderHome(){
@@ -923,8 +941,21 @@ function renderEditor(id){
       <div class="note">제출된 문서는 ${isAdmin()?'관리자 권한으로 즉시 공개됩니다.':'<b>총괄 관리자 승인</b> 후 전체에 공개됩니다.'}</div>
     </div>`;
   renderAttach();
-  const dr=loadDraft();if(!id&&dr){if(confirm('임시 저장된 글이 있습니다. 불러올까요?')){document.getElementById('edTitle').value=dr.title;document.getElementById('edBody').innerHTML=dr.body;document.getElementById('edTags').value=dr.tags;document.getElementById('edCat').value=dr.cat;}}
+  if(!id){
+    const dr=loadDraft();
+    if(dr&&(dr.title||(dr.body&&stripHtml(dr.body).trim()))){
+      document.getElementById('edTitle').value=dr.title||'';
+      document.getElementById('edBody').innerHTML=dr.body||'';
+      document.getElementById('edTags').value=Array.isArray(dr.tags)?dr.tags.join(', '):(dr.tags||'');
+      if(dr.cat)document.getElementById('edCat').value=dr.cat;
+      toast('임시 저장된 내용을 불러왔습니다.');
+    }
+    ['edTitle','edTags','edBody'].forEach(n=>{const el=document.getElementById(n);if(el)el.addEventListener('input',autoSaveDraft);});
+    const cat=document.getElementById('edCat');if(cat)cat.addEventListener('change',autoSaveDraft);
+  }
 }
+let _draftT=null;
+function autoSaveDraft(){clearTimeout(_draftT);_draftT=setTimeout(()=>{try{localStorage.setItem(LS+'_draft',JSON.stringify(collectDoc()));}catch(e){}},500);}
 function fmt(cmd,arg){document.execCommand(cmd,false,arg||null);document.getElementById('edBody').focus();}
 function insertLink(){
   let url=prompt('연결할 주소(URL)를 입력하세요','https://');
@@ -996,7 +1027,8 @@ async function submitDoc(){
       toast(admin?'문서를 발행했습니다.':'업로드 완료! 관리자 승인 후 공개됩니다.');
     }
   }catch(e){return;}
-  clearDraft();refreshAdminDot();go(admin?'home':'mine');
+  if(!EDIT_ID)clearDraft();
+  refreshAdminDot();go(admin?'home':'mine');
 }
 function saveDraft(){localStorage.setItem(LS+'_draft',JSON.stringify(collectDoc()));toast('임시 저장되었습니다.');}
 function loadDraft(){try{return JSON.parse(localStorage.getItem(LS+'_draft'));}catch(e){return null;}}
