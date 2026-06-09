@@ -898,20 +898,24 @@ function renderArticle(id){
 }
 
 /* ====================== EDITOR ====================== */
-let EDIT_ID=null, ATTACH=[];
+let EDIT_ID=null, DRAFT_ID=null, PENDING_DRAFT=null, ATTACH=[];
 function renderEditor(id){
   EDIT_ID=id||null;ATTACH=[];
+  if(id){DRAFT_ID=null;}else{DRAFT_ID=PENDING_DRAFT||null;PENDING_DRAFT=null;}
   const d=id?DB.arts.find(x=>x.id===id):null;
-  if(d&&d.attach)ATTACH=[...d.attach];
+  const draft=(!id&&DRAFT_ID)?getDrafts().find(x=>x.id===DRAFT_ID):null;
+  const src=d||draft;
+  if(src&&src.attach)ATTACH=[...src.attach];
+  const tagVal=src?(Array.isArray(src.tags)?src.tags.join(', '):(src.tags||'')):'';
   document.getElementById('view').innerHTML=`
     <div class="editor">
-      <h2>${d?'문서 수정':'새 문서 작성'}</h2>
-      <div class="field"><label>제목</label><input id="edTitle" placeholder="문서 제목" value="${d?esc(d.title):''}"></div>
+      <h2>${d?'문서 수정':(draft?'임시저장 글 이어쓰기':'새 문서 작성')}</h2>
+      <div class="field"><label>제목</label><input id="edTitle" placeholder="문서 제목" value="${src?esc(src.title||''):''}"></div>
       <div style="display:flex;gap:12px;flex-wrap:wrap">
         <div class="field" style="flex:1;min-width:180px"><label>카테고리</label>
-          <select id="edCat">${CATEGORIES.map(c=>`<option value="${c.id}" ${d&&d.cat===c.id?'selected':''}>${c.name}</option>`).join('')}</select></div>
+          <select id="edCat">${CATEGORIES.map(c=>`<option value="${c.id}" ${src&&src.cat===c.id?'selected':''}>${c.name}</option>`).join('')}</select></div>
         <div class="field" style="flex:1;min-width:180px"><label>태그 (쉼표로 구분)</label>
-          <input id="edTags" placeholder="예: 휴가, 신청, 연차" value="${d?esc(d.tags.join(', ')):''}"></div>
+          <input id="edTags" placeholder="예: 휴가, 신청, 연차" value="${esc(tagVal)}"></div>
       </div>
       <div class="field"><label>본문</label>
         <div class="toolbar">
@@ -927,7 +931,7 @@ function renderEditor(id){
           <button onclick="insertLink()" title="링크 삽입 (YouTube·외부 사이트 등)">🔗 링크</button>
           <button onclick="insertVideo()" title="YouTube 영상 삽입">▶ 영상</button>
         </div>
-        <div id="edBody" class="wysiwyg" contenteditable="true" onpaste="onEdPaste(event)" data-ph="내용을 입력하세요. 상단 버튼으로 서식을 적용할 수 있습니다. (이미지는 붙여넣거나 '이미지' 버튼으로 넣으면 자동 축소됩니다)">${d?d.body:''}</div>
+        <div id="edBody" class="wysiwyg" contenteditable="true" onpaste="onEdPaste(event)" data-ph="내용을 입력하세요. 상단 버튼으로 서식을 적용할 수 있습니다. (이미지는 붙여넣거나 '이미지' 버튼으로 넣으면 자동 축소됩니다)">${src?(src.body||''):''}</div>
       </div>
       <div class="field"><label>파일 첨부 (파일명 기록)</label>
         <input id="edFile" type="file" multiple onchange="addAttach(this.files)">
@@ -938,24 +942,10 @@ function renderEditor(id){
         <button class="btn ghost" onclick="saveDraft()">임시 저장</button>
         <button class="btn ghost" onclick="go('home')">취소</button>
       </div>
-      <div class="note">제출된 문서는 ${isAdmin()?'관리자 권한으로 즉시 공개됩니다.':'<b>총괄 관리자 승인</b> 후 전체에 공개됩니다.'}</div>
+      <div class="note">제출된 문서는 ${isAdmin()?'관리자 권한으로 즉시 공개됩니다.':'<b>총괄 관리자 승인</b> 후 전체에 공개됩니다.'}${!d?' · 임시 저장하면 「내 작성 글」 목록에서 다시 이어쓸 수 있습니다.':''}</div>
     </div>`;
   renderAttach();
-  if(!id){
-    const dr=loadDraft();
-    if(dr&&(dr.title||(dr.body&&stripHtml(dr.body).trim()))){
-      document.getElementById('edTitle').value=dr.title||'';
-      document.getElementById('edBody').innerHTML=dr.body||'';
-      document.getElementById('edTags').value=Array.isArray(dr.tags)?dr.tags.join(', '):(dr.tags||'');
-      if(dr.cat)document.getElementById('edCat').value=dr.cat;
-      toast('임시 저장된 내용을 불러왔습니다.');
-    }
-    ['edTitle','edTags','edBody'].forEach(n=>{const el=document.getElementById(n);if(el)el.addEventListener('input',autoSaveDraft);});
-    const cat=document.getElementById('edCat');if(cat)cat.addEventListener('change',autoSaveDraft);
-  }
 }
-let _draftT=null;
-function autoSaveDraft(){clearTimeout(_draftT);_draftT=setTimeout(()=>{try{localStorage.setItem(LS+'_draft',JSON.stringify(collectDoc()));}catch(e){}},500);}
 function fmt(cmd,arg){document.execCommand(cmd,false,arg||null);document.getElementById('edBody').focus();}
 function insertLink(){
   let url=prompt('연결할 주소(URL)를 입력하세요','https://');
@@ -1027,12 +1017,24 @@ async function submitDoc(){
       toast(admin?'문서를 발행했습니다.':'업로드 완료! 관리자 승인 후 공개됩니다.');
     }
   }catch(e){return;}
-  if(!EDIT_ID)clearDraft();
+  if(!EDIT_ID&&DRAFT_ID){removeDraft(DRAFT_ID);DRAFT_ID=null;}
   refreshAdminDot();go(admin?'home':'mine');
 }
-function saveDraft(){localStorage.setItem(LS+'_draft',JSON.stringify(collectDoc()));toast('임시 저장되었습니다.');}
-function loadDraft(){try{return JSON.parse(localStorage.getItem(LS+'_draft'));}catch(e){return null;}}
-function clearDraft(){localStorage.removeItem(LS+'_draft');}
+function draftsKey(){return 'circle_drafts_'+((me()&&me().email)||'x');}
+function getDrafts(){try{return JSON.parse(localStorage.getItem(draftsKey()))||[];}catch(e){return [];}}
+function saveDrafts(a){try{localStorage.setItem(draftsKey(),JSON.stringify(a));}catch(e){}}
+function removeDraft(did){saveDrafts(getDrafts().filter(x=>x.id!==did));}
+function saveDraft(){
+  const data=collectDoc();
+  if(!data.title&&!stripHtml(data.body).trim())return toast('저장할 내용이 없습니다.');
+  const drafts=getDrafts();
+  if(DRAFT_ID){const dr=drafts.find(x=>x.id===DRAFT_ID);if(dr){Object.assign(dr,data,{saved:Date.now()});}else{DRAFT_ID='dr'+Math.random().toString(36).slice(2,9);drafts.push({id:DRAFT_ID,...data,saved:Date.now()});}}
+  else{DRAFT_ID='dr'+Math.random().toString(36).slice(2,9);drafts.push({id:DRAFT_ID,...data,saved:Date.now()});}
+  saveDrafts(drafts);
+  toast('임시 저장되었습니다. (내 작성 글에서 확인)');
+}
+function continueDraft(did){PENDING_DRAFT=did;go('editor');}
+function deleteDraft(did){if(!confirm('이 임시 저장 글을 삭제하시겠습니까?'))return;removeDraft(did);if(STATE.view==='mine')renderMine();toast('임시 저장 글을 삭제했습니다.');}
 
 /* ====================== MINE + POINTS ====================== */
 const POINT_NEW=10, POINT_UPDATE=2, COUPON_COST=30;
@@ -1057,6 +1059,7 @@ function rewardCard(emoji,name,desc,cost,pts){
 }
 function renderMine(){
   const m=me();const docs=DB.arts.filter(d=>d.author===m.email).sort((a,b)=>b.updated-a.updated);
+  const drafts=getDrafts().sort((a,b)=>b.saved-a.saved);
   const {pts,posts,updates}=myPoints();
   const pct=Math.min(100,Math.round(pts/COUPON_COST*100));const can=pts>=COUPON_COST;
   document.getElementById('view').innerHTML=`
@@ -1080,6 +1083,14 @@ function renderMine(){
       ${rewardCard('🍰','커피 + 디저트 세트','사내 카페테리아',50,pts)}
     </div>
     <div class="note" style="color:var(--soft);font-size:12px;margin-bottom:8px">포인트는 문서가 공개(승인)되면 적립됩니다. 쿠폰 신청 내역은 관리자에게 전달됩니다.</div>
+
+    ${drafts.length?`<div class="section-title">📝 임시 저장 글 <span style="color:var(--muted);font-weight:600">${drafts.length}</span></div>
+      <table class="tbl"><thead><tr><th>제목</th><th>저장 시각</th><th></th></tr></thead><tbody>
+      ${drafts.map(dr=>`<tr>
+        <td><b>${esc(dr.title||'(제목 없음)')}</b></td>
+        <td style="color:var(--muted)">${fmtDate(dr.saved)}</td>
+        <td><div class="row-actions"><button class="btn grad sm" onclick="continueDraft('${dr.id}')">이어쓰기</button><button class="btn danger sm" onclick="deleteDraft('${dr.id}')">삭제</button></div></td>
+      </tr>`).join('')}</tbody></table>`:''}
 
     <div class="section-title">📄 내 문서</div>
     ${docs.length?`<table class="tbl"><thead><tr><th>제목</th><th>카테고리</th><th>상태</th><th>조회</th><th>수정일</th><th></th></tr></thead><tbody>
