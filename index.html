@@ -760,7 +760,6 @@ function renderHome(){
   const arts=visibleArts().filter(d=>d.status==='approved');
   const recent=getRecent().map(id=>arts.find(a=>a.id===id)).filter(Boolean).slice(0,3);
   const fresh=[...arts].sort((a,b)=>b.created-a.created).slice(0,9);
-  const hot=['연차 신청','예산 가이드','체크리스트','온보딩','정산'];
   document.getElementById('view').innerHTML=`
     <div class="home-hero">
       <div class="eyebrow">◐ 써클커넥션 내부 지식 허브</div>
@@ -772,7 +771,6 @@ function renderHome(){
           oninput="onHomeSearch(this.value)" onkeydown="if(event.key==='Enter')runSearch(this.value)">
         <div id="homeSuggest"></div>
       </div>
-      <div class="hot">${hot.map(h=>`<a href="#" onclick="runSearch('${h}');return false">${h}</a>`).join('')}</div>
     </div>
     ${recent.length?`<div class="section-title">🕘 최근 본 문서</div><div class="doc-grid">${recent.map(docCard).join('')}</div>`:''}
     <div class="section-title">✨ 새로 올라온 문서</div>
