@@ -158,9 +158,10 @@
   .sidebar .s-cat.active .c{background:#fff;color:var(--brand-ink)}
 
   /* HOME */
-  .home-hero{position:relative;text-align:center;padding:52px 24px 30px;border-radius:26px;overflow:hidden;
+  .home-hero{position:relative;text-align:center;padding:52px 24px 30px;border-radius:26px;
     background:var(--grad-soft);border:1px solid #ececfb;margin-bottom:6px}
-  .home-hero::before{content:"";position:absolute;width:300px;height:300px;border-radius:50%;
+  .hero-bg{position:absolute;inset:0;border-radius:26px;overflow:hidden;z-index:0;pointer-events:none}
+  .hero-bg::before{content:"";position:absolute;width:300px;height:300px;border-radius:50%;
     background:radial-gradient(circle,rgba(139,92,246,.16),transparent 70%);top:-120px;left:50%;transform:translateX(-50%)}
   .home-hero .eyebrow{position:relative;display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;
     color:var(--brand-ink);background:rgba(255,255,255,.7);padding:6px 14px;border-radius:var(--r-pill);
@@ -762,6 +763,7 @@ function renderHome(){
   const fresh=[...arts].sort((a,b)=>b.created-a.created).slice(0,9);
   document.getElementById('view').innerHTML=`
     <div class="home-hero">
+      <div class="hero-bg"></div>
       <div class="eyebrow">◐ 써클커넥션 내부 지식 허브</div>
       <h1>무엇을 찾고 계신가요?</h1>
       <p>회사 정책부터 행사 운영 가이드까지, 검색 한 번으로.</p>
@@ -842,24 +844,30 @@ function renderSearch(q){
 /* ====================== CATEGORY ====================== */
 let CAT_ID=null, CAT_Q='';
 function renderCategory(catId,q){
-  if(catId!==undefined){CAT_ID=catId;CAT_Q='';}
-  if(q!==undefined)CAT_Q=q;
+  if(catId!==undefined){CAT_ID=catId;CAT_Q=(q!==undefined?q:'');}
+  else if(q!==undefined)CAT_Q=q;
   const c=CATEGORIES.find(x=>x.id===CAT_ID);
+  document.getElementById('view').innerHTML=`
+    <div class="page-head"><h1>${c.emoji} ${c.name}</h1><p>${c.desc} · 최신순</p></div>
+    <div class="cat-search"><span class="ic">🔍</span>
+      <input id="catSearch" autocomplete="off" value="${esc(CAT_Q)}" placeholder="${esc(c.name)}에서 검색…" oninput="filterCategory(this.value)"></div>
+    <div id="catResults"></div>`;
+  renderCatResults();
+}
+function filterCategory(v){CAT_Q=v;renderCatResults();}
+function renderCatResults(){
+  const c=CATEGORIES.find(x=>x.id===CAT_ID);if(!c)return;
   const ql=(CAT_Q||'').trim().toLowerCase();
   let docs=visibleArts().filter(d=>d.cat===CAT_ID&&d.status==='approved');
   if(ql)docs=docs.filter(d=>d.title.toLowerCase().includes(ql)||d.tags.some(t=>t.toLowerCase().includes(ql))||stripHtml(d.body).toLowerCase().includes(ql));
   docs.sort((a,b)=>b.updated-a.updated);
-  document.getElementById('view').innerHTML=`
-    <div class="page-head"><h1>${c.emoji} ${c.name}</h1><p>${c.desc} · 최신순</p></div>
-    <div class="cat-search"><span class="ic">🔍</span>
-      <input id="catSearch" autocomplete="off" value="${esc(CAT_Q)}" placeholder="${esc(c.name)}에서 검색…" oninput="renderCategory(undefined,this.value)"></div>
-    ${docs.length?docs.map(d=>`
+  const el=document.getElementById('catResults');if(!el)return;
+  el.innerHTML=docs.length?docs.map(d=>`
       <div class="doc-row" onclick="openDoc('${d.id}')">
         <div class="r-main"><h4>${hl(d.title,ql)}</h4><div class="r-ex">${esc(stripHtml(d.body).slice(0,110))}</div></div>
         <div class="r-meta">${fmtDate(d.updated)}<br>👁 ${d.views}</div>
       </div>`).join('')
-      :`<div class="empty">${ql?`'${esc(CAT_Q)}' 검색 결과가 없습니다.`:'이 카테고리에 아직 문서가 없습니다.'}<div style="margin-top:14px"><button class="btn grad sm" onclick="askReview('${esc(CAT_Q)}')">🔎 검토 요청하기</button></div></div>`}`;
-  const ci=document.getElementById('catSearch');if(ci){ci.focus();ci.setSelectionRange(ci.value.length,ci.value.length);}
+      :`<div class="empty">${ql?`'${esc(CAT_Q)}' 검색 결과가 없습니다.`:'이 카테고리에 아직 문서가 없습니다.'}<div style="margin-top:14px"><button class="btn grad sm" onclick="askReview('${esc(CAT_Q)}')">🔎 검토 요청하기</button></div></div>`;
 }
 
 /* ====================== ARTICLE ====================== */
