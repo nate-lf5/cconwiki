@@ -871,6 +871,29 @@ function renderCatResults(){
 }
 
 /* ====================== ARTICLE ====================== */
+function linkifyEl(root){
+  if(!root)return;
+  const re=/(https?:\/\/[^\s<]+|www\.[^\s<]+)/g;
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null);
+  const targets=[];
+  while(walker.nextNode()){const n=walker.currentNode;
+    if(n.parentElement&&n.parentElement.closest('a'))continue;
+    re.lastIndex=0;if(re.test(n.nodeValue))targets.push(n);}
+  targets.forEach(n=>{
+    const s=n.nodeValue;const frag=document.createDocumentFragment();let last=0,m;re.lastIndex=0;
+    while((m=re.exec(s))){
+      if(m.index>last)frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+      let disp=m[0],trail='';
+      while(/[.,);!?\]]$/.test(disp)){trail=disp.slice(-1)+trail;disp=disp.slice(0,-1);}
+      const href=/^www\./i.test(disp)?'https://'+disp:disp;
+      const a=document.createElement('a');a.href=href;a.textContent=disp;a.target='_blank';a.rel='noopener noreferrer';
+      frag.appendChild(a);if(trail)frag.appendChild(document.createTextNode(trail));
+      last=m.index+m[0].length;
+    }
+    if(last<s.length)frag.appendChild(document.createTextNode(s.slice(last)));
+    n.parentNode.replaceChild(frag,n);
+  });
+}
 async function openDoc(id){
   const d=DB.arts.find(x=>x.id===id);
   if(d&&d.status==='approved'){await dataIncViews(id);setRecent([id,...getRecent().filter(x=>x!==id)].slice(0,8));}
@@ -900,6 +923,7 @@ function renderArticle(id){
       </div>
       ${d.history.length?`<div class="history"><h3>수정 이력</h3>${d.history.slice().reverse().map(h=>`<div class="h-row">• ${fmtDate(h.t)} — ${esc(h.by)} ${esc(h.note||'수정')}</div>`).join('')}</div>`:''}
     </div>`;
+  const _b=document.querySelector('.a-body');if(_b)linkifyEl(_b);
   document.querySelectorAll('.a-body a').forEach(a=>{a.target='_blank';a.rel='noopener noreferrer';});
 }
 

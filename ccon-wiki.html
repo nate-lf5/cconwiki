@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCON Wiki — 사내 정보 공유 플랫폼</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --surface:#ffffff; --border:#e3e6ea; --text:#1c2430;
+    --muted:#6b7684; --primary:#2f6df6; --primary-dark:#1f54cc;
+    --accent:#0fbf8f; --warn:#f5a623; --danger:#e5484d;
+    --radius:12px; --shadow:0 1px 3px rgba(20,30,50,.08),0 6px 20px rgba(20,30,50,.05);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.55;font-size:15px}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:8px;font-size:14px}
+  input,select,textarea{font-family:inherit;font-size:14px}
+  a{color:var(--primary);text-decoration:none}
+  .hidden{display:none!important}
+
+  /* ===== Auth ===== */
+  #auth{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+    background:linear-gradient(135deg,#2f6df6 0%,#5b3df6 100%)}
+  .auth-card{background:#fff;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.25);
+    width:100%;max-width:420px;padding:36px 34px}
+  .auth-logo{font-size:26px;font-weight:800;letter-spacing:-.5px;color:var(--primary)}
+  .auth-logo span{color:var(--text)}
+  .auth-sub{color:var(--muted);font-size:13px;margin-top:4px;margin-bottom:26px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#34404f}
+  .field input,.field select{width:100%;padding:11px 13px;border:1px solid var(--border);
+    border-radius:9px;background:#fafbfc;outline:none;transition:.15s}
+  .field input:focus{border-color:var(--primary);background:#fff}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 16px;
+    background:var(--primary);color:#fff;font-weight:700;border-radius:9px}
+  .btn:hover{background:var(--primary-dark)}
+  .btn.block{width:100%}
+  .btn.ghost{background:#eef1f6;color:#34404f}
+  .btn.ghost:hover{background:#e2e7ef}
+  .btn.google{background:#fff;color:#34404f;border:1px solid var(--border)}
+  .btn.google:hover{background:#f7f9fb}
+  .btn.sm{padding:6px 11px;font-size:13px}
+  .btn.danger{background:var(--danger)}.btn.danger:hover{background:#c93b40}
+  .btn.ok{background:var(--accent)}.btn.ok:hover{background:#0aa67b}
+  .btn.warn{background:var(--warn)}.btn.warn:hover{background:#d98c0c}
+  .auth-switch{text-align:center;margin-top:18px;font-size:13px;color:var(--muted)}
+  .divider{display:flex;align-items:center;gap:10px;margin:18px 0;color:var(--muted);font-size:12px}
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--border)}
+  .note{font-size:12px;color:var(--muted);margin-top:8px}
+  .msg{font-size:13px;padding:9px 12px;border-radius:8px;margin-bottom:14px}
+  .msg.err{background:#fde8e9;color:#b5292d}
+  .msg.info{background:#e7f0ff;color:#1f54cc}
+
+  /* ===== App shell ===== */
+  header.topbar{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:18px;padding:0 24px;height:60px}
+  .brand{font-size:19px;font-weight:800;color:var(--primary);cursor:pointer;letter-spacing:-.5px}
+  .brand span{color:var(--text)}
+  .top-search{flex:1;max-width:520px;position:relative}
+  .top-search input{width:100%;padding:9px 14px 9px 38px;border:1px solid var(--border);
+    border-radius:24px;background:#f3f5f8;outline:none}
+  .top-search input:focus{background:#fff;border-color:var(--primary)}
+  .top-search .ic{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted)}
+  .spacer{flex:1}
+  .nav-btn{background:transparent;color:#34404f;font-weight:600;padding:8px 12px;border-radius:8px}
+  .nav-btn:hover{background:#f0f2f6}
+  .nav-btn.badge{position:relative}
+  .nav-btn .dot{position:absolute;top:3px;right:4px;background:var(--danger);color:#fff;
+    font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;line-height:16px}
+  .avatar{width:34px;height:34px;border-radius:50%;background:var(--primary);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:700;cursor:pointer}
+  .menu{position:absolute;right:24px;top:56px;background:#fff;border:1px solid var(--border);
+    border-radius:10px;box-shadow:var(--shadow);min-width:200px;padding:8px;z-index:40}
+  .menu .who{padding:8px 10px;border-bottom:1px solid var(--border);margin-bottom:6px}
+  .menu .who b{display:block}.menu .who small{color:var(--muted)}
+  .menu button{display:block;width:100%;text-align:left;background:transparent;padding:9px 10px;
+    border-radius:7px;color:#34404f}
+  .menu button:hover{background:#f0f2f6}
+
+  main{max-width:1080px;margin:0 auto;padding:28px 24px 80px}
+
+  /* ===== Home ===== */
+  .hero{text-align:center;padding:40px 0 26px}
+  .hero h1{font-size:30px;font-weight:800;letter-spacing:-1px}
+  .hero p{color:var(--muted);margin-top:8px}
+  .home-search{max-width:620px;margin:24px auto 0;position:relative}
+  .home-search input{width:100%;padding:16px 18px 16px 50px;font-size:17px;border:2px solid var(--border);
+    border-radius:32px;outline:none;box-shadow:var(--shadow)}
+  .home-search input:focus{border-color:var(--primary)}
+  .home-search .ic{position:absolute;left:18px;top:50%;transform:translateY(-50%);color:var(--muted)}
+  .suggest{position:absolute;top:64px;left:0;right:0;background:#fff;border:1px solid var(--border);
+    border-radius:14px;box-shadow:var(--shadow);overflow:hidden;z-index:20}
+  .suggest .s-item{display:flex;align-items:center;gap:10px;padding:11px 16px;cursor:pointer}
+  .suggest .s-item:hover{background:#f3f6fb}
+  .suggest .s-item .tag{font-size:11px;color:var(--muted);background:#eef1f6;padding:2px 7px;border-radius:6px}
+  .suggest .s-item mark{background:#fff3bf;color:inherit;border-radius:2px}
+  .suggest .s-empty{padding:16px;color:var(--muted);text-align:center}
+
+  .section-title{font-size:16px;font-weight:700;margin:34px 0 14px;display:flex;align-items:center;gap:8px}
+  .section-title .more{margin-left:auto;font-size:13px;font-weight:600;color:var(--primary);cursor:pointer}
+
+  .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+  .cat-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:18px;
+    cursor:pointer;transition:.15s}
+  .cat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:#cdd6e3}
+  .cat-card .emoji{font-size:24px}
+  .cat-card h3{font-size:15px;margin:8px 0 3px}
+  .cat-card p{font-size:12.5px;color:var(--muted)}
+  .cat-card .cnt{font-size:12px;color:var(--primary);font-weight:600;margin-top:8px}
+
+  .doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+  .doc-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;transition:.15s}
+  .doc-card:hover{box-shadow:var(--shadow);border-color:#cdd6e3}
+  .doc-card .cat{font-size:11.5px;color:var(--primary);font-weight:700}
+  .doc-card h4{font-size:15px;margin:5px 0 6px;line-height:1.4}
+  .doc-card .excerpt{font-size:13px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .doc-card .meta{display:flex;gap:10px;font-size:11.5px;color:var(--muted);margin-top:10px}
+  .pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600}
+  .pill.pending{background:#fff3e0;color:#c47f0a}
+  .pill.approved{background:#e6f7f0;color:#0a9d72}
+  .pill.rejected{background:#fde8e9;color:#c93b40}
+  .pill.hidden{background:#eceff3;color:#6b7684}
+
+  /* ===== Search results ===== */
+  .results-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+  .results-head h2{font-size:20px}
+  .filters{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+  .filters select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:#fff}
+  .result-item{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:12px;cursor:pointer;transition:.15s}
+  .result-item:hover{box-shadow:var(--shadow)}
+  .result-item h4{font-size:16px;margin-bottom:5px}
+  .result-item h4 mark{background:#fff3bf;border-radius:2px}
+  .result-item .excerpt{color:var(--muted);font-size:13.5px}
+  .result-item .excerpt mark{background:#fff3bf}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .tags .t{font-size:11.5px;background:#eef1f6;color:#4a5666;padding:2px 9px;border-radius:20px}
+
+  /* ===== Article view ===== */
+  .article{background:#fff;border:1px solid var(--border);border-radius:14px;padding:34px;max-width:820px;margin:0 auto}
+  .breadcrumb{font-size:13px;color:var(--muted);margin-bottom:14px}
+  .breadcrumb a{color:var(--muted)}
+  .article h1{font-size:26px;line-height:1.35;margin-bottom:12px}
+  .article .a-meta{display:flex;gap:14px;align-items:center;flex-wrap:wrap;color:var(--muted);
+    font-size:13px;border-bottom:1px solid var(--border);padding-bottom:16px;margin-bottom:22px}
+  .article .a-body{font-size:15.5px;line-height:1.8}
+  .article .a-body h2{font-size:19px;margin:24px 0 10px}
+  .article .a-body h3{font-size:16px;margin:18px 0 8px}
+  .article .a-body p{margin:10px 0}
+  .article .a-body ul,.article .a-body ol{margin:10px 0 10px 22px}
+  .article .a-body li{margin:4px 0}
+  .article .a-body strong{font-weight:700}
+  .article .a-actions{display:flex;gap:8px;margin-top:26px;flex-wrap:wrap}
+  .history{margin-top:24px;border-top:1px solid var(--border);padding-top:16px}
+  .history h3{font-size:14px;margin-bottom:10px;color:var(--muted)}
+  .history .h-row{font-size:13px;color:var(--muted);padding:5px 0}
+
+  /* ===== Editor ===== */
+  .editor{background:#fff;border:1px solid var(--border);border-radius:14px;padding:28px;max-width:820px;margin:0 auto}
+  .editor h2{font-size:20px;margin-bottom:20px}
+  .editor .field input,.editor .field select,.editor .field textarea{width:100%;padding:11px 13px;
+    border:1px solid var(--border);border-radius:9px;background:#fafbfc;outline:none}
+  .editor .field input:focus,.editor .field textarea:focus,.editor .field select:focus{border-color:var(--primary);background:#fff}
+  .toolbar{display:flex;gap:4px;border:1px solid var(--border);border-bottom:none;border-radius:9px 9px 0 0;
+    padding:6px;background:#f7f9fb;flex-wrap:wrap}
+  .toolbar button{background:#fff;border:1px solid var(--border);border-radius:6px;width:34px;height:30px;font-weight:700;color:#34404f}
+  .toolbar button:hover{background:#eef1f6}
+  .toolbar .sep{width:1px;background:var(--border);margin:2px 3px}
+  .wysiwyg{min-height:240px;border:1px solid var(--border);border-radius:0 0 9px 9px;padding:14px;
+    background:#fff;outline:none;line-height:1.7}
+  .wysiwyg:empty:before{content:attr(data-ph);color:#aab2bd}
+  .editor-actions{display:flex;gap:8px;margin-top:20px}
+  .attach-list{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+  .attach-list .a-item{display:flex;align-items:center;gap:8px;font-size:13px;background:#f3f5f8;padding:6px 10px;border-radius:7px}
+  .attach-list .a-item button{margin-left:auto;background:transparent;color:var(--danger);font-size:13px}
+
+  /* ===== Dashboard ===== */
+  .dash-tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);margin-bottom:22px;flex-wrap:wrap}
+  .dash-tabs button{background:transparent;padding:11px 16px;font-weight:600;color:var(--muted);
+    border-bottom:2px solid transparent;border-radius:0}
+  .dash-tabs button.active{color:var(--primary);border-bottom-color:var(--primary)}
+  .dash-tabs button .b{background:var(--danger);color:#fff;font-size:11px;border-radius:10px;padding:0 6px;margin-left:6px}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:26px}
+  .stat{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px}
+  .stat .n{font-size:26px;font-weight:800}
+  .stat .l{font-size:13px;color:var(--muted);margin-top:2px}
+  table.tbl{width:100%;background:#fff;border:1px solid var(--border);border-radius:12px;border-collapse:separate;border-spacing:0;overflow:hidden}
+  table.tbl th{background:#f7f9fb;text-align:left;font-size:12.5px;color:var(--muted);padding:12px 14px;font-weight:700}
+  table.tbl td{padding:12px 14px;border-top:1px solid var(--border);font-size:13.5px;vertical-align:middle}
+  table.tbl td .row-actions{display:flex;gap:6px;flex-wrap:wrap}
+  .empty{text-align:center;color:var(--muted);padding:40px;background:#fff;border:1px dashed var(--border);border-radius:12px}
+
+  /* ===== Modal ===== */
+  .modal-bg{position:fixed;inset:0;background:rgba(15,22,35,.5);display:flex;align-items:center;
+    justify-content:center;z-index:50;padding:20px}
+  .modal{background:#fff;border-radius:14px;max-width:460px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .modal h3{font-size:17px;margin-bottom:12px}
+  .modal textarea{width:100%;min-height:80px;padding:10px;border:1px solid var(--border);border-radius:9px;margin-top:8px}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1c2430;color:#fff;
+    padding:12px 20px;border-radius:10px;font-size:14px;z-index:60;box-shadow:0 8px 30px rgba(0,0,0,.3);opacity:0;transition:.3s}
+  .toast.show{opacity:1;bottom:34px}
+
+  @media(max-width:680px){
+    .top-search{display:none}.hero h1{font-size:24px}.article,.editor{padding:20px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ AUTH ============ -->
+<div id="auth">
+  <div class="auth-card">
+    <div class="auth-logo">CCON<span> Wiki</span></div>
+    <div class="auth-sub">씨콘 이벤트 에이전시 · 사내 정보 공유 플랫폼</div>
+
+    <!-- Login -->
+    <div id="loginForm">
+      <div id="loginMsg"></div>
+      <div class="field"><label>회사 이메일</label><input id="loginEmail" type="email" placeholder="name@ccon.co.kr" autocomplete="username"></div>
+      <div class="field"><label>비밀번호</label><input id="loginPw" type="password" placeholder="비밀번호" autocomplete="current-password"></div>
+      <button class="btn block" onclick="doLogin()">로그인</button>
+      <div class="divider">또는</div>
+      <button class="btn google block" onclick="googleLogin()">
+        <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#4285F4" d="M45 24c0-1.6-.1-3.1-.4-4.6H24v9.3h11.8c-.5 2.7-2 5-4.3 6.5v5.4h7C42.6 36.9 45 31 45 24z"/><path fill="#34A853" d="M24 46c5.8 0 10.7-1.9 14.3-5.2l-7-5.4c-1.9 1.3-4.4 2.1-7.3 2.1-5.6 0-10.4-3.8-12.1-8.9H4.7v5.6C8.3 41.6 15.6 46 24 46z"/><path fill="#FBBC05" d="M11.9 28.6c-.4-1.3-.7-2.7-.7-4.1s.3-2.8.7-4.1v-5.6H4.7C3.2 17.7 2.4 20.7 2.4 24s.8 6.3 2.3 9.2l7.2-5.6z"/><path fill="#EA4335" d="M24 11.4c3.1 0 6 1.1 8.2 3.2l6.1-6.1C34.7 5 29.8 3 24 3 15.6 3 8.3 7.4 4.7 14.8l7.2 5.6c1.7-5.1 6.5-9 12.1-9z"/></svg>
+        Google Workspace 계정으로 로그인
+      </button>
+      <div class="note">확장 단계(3개월 후) 연동 예정 기능입니다. 데모에서는 즉시 관리자 로그인됩니다.</div>
+      <div class="auth-switch">계정이 없으신가요? <a href="#" onclick="showSignup();return false">가입 신청</a></div>
+    </div>
+
+    <!-- Signup -->
+    <div id="signupForm" class="hidden">
+      <div id="signupMsg"></div>
+      <div class="field"><label>이름</label><input id="suName" placeholder="홍길동"></div>
+      <div class="field"><label>회사 이메일</label><input id="suEmail" type="email" placeholder="name@ccon.co.kr"></div>
+      <div class="field"><label>부서</label>
+        <select id="suDept"><option>기획팀</option><option>운영팀</option><option>디자인팀</option><option>영업팀</option><option>경영지원팀</option></select>
+      </div>
+      <div class="field"><label>비밀번호</label><input id="suPw" type="password" placeholder="영문+숫자+특수문자 8자 이상"></div>
+      <button class="btn block" onclick="doSignup()">가입 신청</button>
+      <div class="note">가입 신청 후 <b>총괄 관리자 승인</b>이 완료되면 로그인할 수 있습니다.</div>
+      <div class="auth-switch">이미 계정이 있으신가요? <a href="#" onclick="showLogin();return false">로그인</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" class="hidden">
+  <header class="topbar">
+    <div class="brand" onclick="go('home')">CCON<span> Wiki</span></div>
+    <div class="top-search">
+      <span class="ic">🔍</span>
+      <input id="topSearch" placeholder="문서, 정책, 가이드 검색…" oninput="onTopSearch(this.value)" onkeydown="if(event.key==='Enter')runSearch(this.value)">
+    </div>
+    <div class="spacer"></div>
+    <button class="nav-btn" onclick="go('editor')">+ 새 글</button>
+    <button id="adminNav" class="nav-btn badge hidden" onclick="go('dash')">관리자 <span id="adminDot" class="dot hidden">0</span></button>
+    <div class="avatar" id="avatar" onclick="toggleMenu()"></div>
+  </header>
+
+  <div id="userMenu" class="menu hidden">
+    <div class="who"><b id="meName"></b><small id="meEmail"></small><br><small id="meRole"></small></div>
+    <button onclick="go('mine')">내 작성 글</button>
+    <button onclick="logout()">로그아웃</button>
+  </div>
+
+  <main id="view"></main>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* ====================== STORE ====================== */
+const LS='ccon_wiki_v1';
+const CATEGORIES=[
+  {id:'policy', name:'회사 정책', emoji:'📋', desc:'인사·복리후생·업무 규칙', subs:['인사 정책','복리후생','업무 규칙']},
+  {id:'leave', name:'휴가 및 근무', emoji:'🏖️', desc:'휴가 종류·근무시간·유연근무', subs:['휴가 신청','근무 시간','특별 휴가']},
+  {id:'welfare', name:'식사 및 복지', emoji:'🍽️', desc:'카페테리아·식사·건강검진', subs:['식사 안내','복지','건강검진']},
+  {id:'event', name:'이벤트 운영', emoji:'🎪', desc:'행사 기획·예산·참가자 관리', subs:['기획 프로세스','예산 가이드','참가자 관리','체크리스트']},
+  {id:'system', name:'시스템 및 도구', emoji:'💻', desc:'소프트웨어·시스템 접근·IT 지원', subs:['소프트웨어','시스템 접근','IT 지원']},
+  {id:'edu', name:'교육 및 자료', emoji:'📚', desc:'매뉴얼·템플릿·외부 자료', subs:['매뉴얼','템플릿','외부 자료']},
+];
+const catName=id=>(CATEGORIES.find(c=>c.id===id)||{name:'기타'}).name;
+
+function seed(){
+  const now=Date.now(), D=86400000;
+  const users=[
+    {email:'nate@ccon.co.kr', name:'Nathan (대표)', dept:'경영', pw:'admin', role:'admin', status:'active', joined:now-120*D},
+    {email:'jiwon@ccon.co.kr', name:'김지원', dept:'기획팀', pw:'pass1234!', role:'user', status:'active', joined:now-60*D},
+    {email:'minho@ccon.co.kr', name:'이민호', dept:'운영팀', pw:'pass1234!', role:'user', status:'active', joined:now-40*D},
+    {email:'sora@ccon.co.kr', name:'박소라', dept:'디자인팀', pw:'pass1234!', role:'user', status:'pending', joined:now-1*D},
+    {email:'tjkim@ccon.co.kr', name:'김태준', dept:'영업팀', pw:'pass1234!', role:'user', status:'pending', joined:now-0.3*D},
+  ];
+  const a=(o)=>Object.assign({id:'d'+Math.random().toString(36).slice(2,9),views:0,status:'approved',
+    author:'nate@ccon.co.kr',created:now,updated:now,history:[],reject:''},o);
+  const arts=[
+    a({title:'연차 휴가 신청 방법 및 규정', cat:'leave', tags:['휴가','연차','신청'], author:'jiwon@ccon.co.kr', views:142, created:now-30*D, updated:now-5*D,
+      body:'<h2>연차 휴가 개요</h2><p>입사 1년 미만은 매월 개근 시 <strong>1일</strong>의 연차가 발생하며, 1년 이상 근속자는 연 <strong>15일</strong>이 부여됩니다.</p><h2>신청 절차</h2><ol><li>그룹웨어 → 휴가 신청 메뉴 접속</li><li>희망 일자 및 사유 입력</li><li>팀장 승인 → 경영지원팀 확정</li></ol><h3>유의사항</h3><ul><li>행사 진행 주간(D-7 ~ 행사일)에는 팀 단위 사전 협의 필수</li><li>3일 이상 연속 휴가는 2주 전 신청 권장</li></ul>'}),
+    a({title:'행사 기획 표준 프로세스 (RFP → 정산)', cat:'event', tags:['기획','프로세스','RFP','정산'], author:'minho@ccon.co.kr', views:230, created:now-25*D, updated:now-3*D,
+      body:'<h2>1. 수주 및 RFP 분석</h2><p>클라이언트 RFP 접수 후 <strong>킥오프 미팅</strong>을 통해 목표·예산·일정을 확정합니다.</p><h2>2. 기획안 작성</h2><ul><li>컨셉 및 연출 시나리오</li><li>운영 인력 및 협력사 구성</li><li>예산안(견적서) 작성</li></ul><h2>3. 실행 및 운영</h2><p>D-7 통합 리허설, D-day 현장 운영, 안전 관리 매뉴얼 준수.</p><h2>4. 정산 및 결과 보고</h2><p>행사 종료 후 <strong>2주 이내</strong> 정산서와 결과 보고서를 제출합니다.</p>'}),
+    a({title:'이벤트 예산 책정 가이드', cat:'event', tags:['예산','견적','정산'], author:'nate@ccon.co.kr', views:188, created:now-20*D, updated:now-20*D,
+      body:'<h2>예산 항목 구성</h2><ul><li><strong>연출/제작비</strong>: 무대, 음향, 조명, 영상</li><li><strong>인건비</strong>: 운영 인력, MC, 스태프</li><li><strong>대관/장비</strong>: 장소 임대, 렌탈</li><li><strong>예비비</strong>: 총 예산의 5~10%</li></ul><h2>마진 기준</h2><p>표준 대행 마진은 직접비의 <strong>15~20%</strong>를 기준으로 합니다.</p>'}),
+    a({title:'현장 운영 필수 체크리스트', cat:'event', tags:['체크리스트','운영','현장'], author:'minho@ccon.co.kr', views:97, created:now-12*D, updated:now-12*D,
+      body:'<h2>D-1 점검</h2><ul><li>무대/음향/조명 셋업 및 사운드 체크</li><li>동선 및 사이니지 확인</li><li>비상 연락망 공유</li></ul><h2>D-day</h2><ul><li>리허설 (개장 2시간 전)</li><li>스태프 브리핑</li><li>안전요원 배치 확인</li></ul>'}),
+    a({title:'카페테리아 이용 및 식대 지원 안내', cat:'welfare', tags:['식사','복지','식대'], author:'jiwon@ccon.co.kr', views:64, created:now-15*D, updated:now-15*D,
+      body:'<h2>운영 시간</h2><p>점심 11:30~13:00 / 저녁(행사 시) 18:00~19:00</p><h2>식대 지원</h2><p>1일 <strong>1만원</strong> 한도 지원, 야근/행사 시 별도 정산 가능.</p>'}),
+    a({title:'신규 입사자 온보딩 가이드', cat:'policy', tags:['온보딩','신입','인사'], author:'nate@ccon.co.kr', views:120, created:now-10*D, updated:now-4*D,
+      body:'<h2>첫 주 체크리스트</h2><ul><li>그룹웨어/메신저 계정 발급</li><li>보안 서약 및 사내 규정 숙지</li><li>담당 멘토 배정</li></ul><h2>필수 교육</h2><p>안전관리·개인정보보호·현장 운영 기초 교육을 1주 내 이수합니다.</p>'}),
+    a({title:'사내 협업 툴(슬랙/노션) 사용 가이드', cat:'system', tags:['슬랙','노션','도구'], author:'minho@ccon.co.kr', views:55, created:now-8*D, updated:now-8*D,
+      body:'<h2>슬랙 채널 규칙</h2><ul><li>#general 전사 공지</li><li>#proj-[행사명] 프로젝트별 채널</li><li>멘션은 담당자에 한정</li></ul><h2>IT 지원</h2><p>계정/장비 문의는 #it-support 또는 it@ccon.co.kr</p>'}),
+    a({title:'행사 제안서(PT) 템플릿 모음', cat:'edu', tags:['템플릿','제안서','PT'], author:'jiwon@ccon.co.kr', views:78, created:now-6*D, updated:now-6*D,
+      body:'<h2>제공 템플릿</h2><ul><li>기업 행사 제안서 (16:9)</li><li>예산 견적서 양식 (xlsx)</li><li>결과 보고서 양식</li></ul><p>최신 버전은 공유 드라이브 /templates 폴더 참고.</p>'}),
+    a({title:'재택·유연근무 운영 정책', cat:'leave', tags:['유연근무','재택','근무'], author:'sora@ccon.co.kr', status:'pending', views:0, created:now-1*D, updated:now-1*D,
+      body:'<h2>유연근무 기준</h2><p>코어타임 10:00~16:00, 출근 시간 08~10시 사이 자율 선택.</p><h2>재택근무</h2><p>비행사 주간 한정 주 1회 신청 가능(팀장 승인).</p>'}),
+    a({title:'협력사 정산 및 세금계산서 처리 절차', cat:'policy', tags:['정산','세금계산서','협력사'], author:'minho@ccon.co.kr', status:'pending', views:0, created:now-0.5*D, updated:now-0.5*D,
+      body:'<h2>정산 흐름</h2><ol><li>협력사 견적/계약 확인</li><li>행사 종료 후 세금계산서 수취</li><li>경영지원팀 검토 → 익월 10일 지급</li></ol>'}),
+  ];
+  return {users, arts, recent:[], searches:0, sessionEmail:null};
+}
+let DB=load();
+function load(){try{const r=JSON.parse(localStorage.getItem(LS));if(r&&r.users)return r;}catch(e){}const s=seed();localStorage.setItem(LS,JSON.stringify(s));return s;}
+function save(){localStorage.setItem(LS,JSON.stringify(DB));}
+function me(){return DB.users.find(u=>u.email===DB.sessionEmail)||null;}
+function isAdmin(){const m=me();return m&&m.role==='admin';}
+
+/* ====================== AUTH ====================== */
+function showSignup(){document.getElementById('loginForm').classList.add('hidden');document.getElementById('signupForm').classList.remove('hidden');}
+function showLogin(){document.getElementById('signupForm').classList.add('hidden');document.getElementById('loginForm').classList.remove('hidden');}
+function authMsg(id,txt,cls){document.getElementById(id).innerHTML=txt?`<div class="msg ${cls}">${txt}</div>`:'';}
+
+function doLogin(){
+  const email=val('loginEmail').trim().toLowerCase(), pw=val('loginPw');
+  const u=DB.users.find(x=>x.email===email);
+  if(!u){return authMsg('loginMsg','등록되지 않은 이메일입니다.','err');}
+  if(u.status==='pending'){return authMsg('loginMsg','아직 관리자 승인 대기 중인 계정입니다.','err');}
+  if(u.status==='removed'){return authMsg('loginMsg','접근이 제한된 계정입니다. 관리자에게 문의하세요.','err');}
+  if(u.pw!==pw){return authMsg('loginMsg','비밀번호가 일치하지 않습니다.','err');}
+  DB.sessionEmail=u.email;save();enterApp();
+}
+function googleLogin(){
+  // 데모: Workspace 연동을 모사하여 관리자 계정으로 진입
+  DB.sessionEmail='nate@ccon.co.kr';save();enterApp();
+  toast('Google Workspace 계정으로 로그인했습니다 (데모)');
+}
+function doSignup(){
+  const name=val('suName').trim(), email=val('suEmail').trim().toLowerCase(), dept=val('suDept'), pw=val('suPw');
+  if(!name||!email||!pw)return authMsg('signupMsg','모든 항목을 입력해주세요.','err');
+  if(!email.endsWith('@ccon.co.kr'))return authMsg('signupMsg','회사 이메일(@ccon.co.kr)만 가입할 수 있습니다.','err');
+  if(DB.users.some(u=>u.email===email))return authMsg('signupMsg','이미 신청되었거나 등록된 이메일입니다.','err');
+  if(!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(pw))
+    return authMsg('signupMsg','비밀번호는 영문+숫자+특수문자 포함 8자 이상이어야 합니다.','err');
+  DB.users.push({email,name,dept,pw,role:'user',status:'pending',joined:Date.now()});save();
+  showLogin();authMsg('loginMsg','가입 신청이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다.','info');
+  clear('suName','suEmail','suPw');
+}
+function enterApp(){
+  document.getElementById('auth').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  const m=me();
+  document.getElementById('avatar').textContent=m.name.slice(0,1);
+  document.getElementById('meName').textContent=m.name;
+  document.getElementById('meEmail').textContent=m.email;
+  document.getElementById('meRole').textContent=m.role==='admin'?'👑 총괄 관리자':'일반 사용자 · '+(m.dept||'');
+  document.getElementById('adminNav').classList.toggle('hidden',m.role!=='admin');
+  refreshAdminDot();go('home');
+}
+function logout(){DB.sessionEmail=null;save();location.reload();}
+
+/* ====================== HELPERS ====================== */
+function val(id){return document.getElementById(id).value;}
+function clear(...ids){ids.forEach(i=>document.getElementById(i).value='');}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function stripHtml(h){const d=document.createElement('div');d.innerHTML=h;return d.textContent||'';}
+function fmtDate(t){const d=new Date(t);return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;}
+function ago(t){const s=(Date.now()-t)/1000;if(s<3600)return Math.floor(s/60)+'분 전';if(s<86400)return Math.floor(s/3600)+'시간 전';return Math.floor(s/86400)+'일 전';}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2400);}
+function toggleMenu(){document.getElementById('userMenu').classList.toggle('hidden');}
+document.addEventListener('click',e=>{const m=document.getElementById('userMenu');if(!m.classList.contains('hidden')&&!m.contains(e.target)&&e.target.id!=='avatar')m.classList.add('hidden');});
+function hl(text,q){if(!q)return esc(text);const i=text.toLowerCase().indexOf(q.toLowerCase());if(i<0)return esc(text);return esc(text.slice(0,i))+'<mark>'+esc(text.slice(i,i+q.length))+'</mark>'+esc(text.slice(i+q.length));}
+
+/* visible docs for normal users = approved only; admin sees their own pending too */
+function visibleArts(){const m=me();return DB.arts.filter(d=>d.status==='approved'||(m&&(d.author===m.email||m.role==='admin')));}
+function pendingDocs(){return DB.arts.filter(d=>d.status==='pending');}
+function pendingUsers(){return DB.users.filter(u=>u.status==='pending');}
+function refreshAdminDot(){
+  const n=pendingDocs().length+pendingUsers().length;
+  const dot=document.getElementById('adminDot');
+  if(isAdmin()&&n>0){dot.classList.remove('hidden');dot.textContent=n;}else{dot.classList.add('hidden');}
+}
+
+/* ====================== ROUTER ====================== */
+let STATE={q:'',catFilter:'',sort:'rel',dashTab:'users'};
+function go(view,arg){
+  document.getElementById('userMenu').classList.add('hidden');
+  if(view==='home')renderHome();
+  else if(view==='search')renderSearch(arg!==undefined?arg:STATE.q);
+  else if(view==='category')renderCategory(arg);
+  else if(view==='article')renderArticle(arg);
+  else if(view==='editor')renderEditor(arg);
+  else if(view==='dash'){if(!isAdmin())return toast('관리자만 접근할 수 있습니다.');renderDash();}
+  else if(view==='mine')renderMine();
+  window.scrollTo(0,0);
+}
+
+/* ====================== HOME ====================== */
+function renderHome(){
+  const arts=visibleArts().filter(d=>d.status==='approved');
+  const recent=DB.recent.map(id=>arts.find(a=>a.id===id)).filter(Boolean).slice(0,4);
+  const fresh=[...arts].sort((a,b)=>b.created-a.created).slice(0,4);
+  const v=document.getElementById('view');
+  v.innerHTML=`
+    <div class="hero">
+      <h1>무엇을 찾고 계신가요?</h1>
+      <p>회사 정책부터 행사 운영 가이드까지, 검색 한 번으로.</p>
+      <div class="home-search">
+        <span class="ic">🔍</span>
+        <input id="homeSearch" autocomplete="off" placeholder="예: 연차 신청, 예산 가이드, 체크리스트…"
+          oninput="onHomeSearch(this.value)" onkeydown="if(event.key==='Enter')runSearch(this.value)">
+        <div id="homeSuggest"></div>
+      </div>
+    </div>
+
+    <div class="section-title">📂 카테고리</div>
+    <div class="cat-grid">
+      ${CATEGORIES.map(c=>{const n=arts.filter(a=>a.cat===c.id).length;return `
+        <div class="cat-card" onclick="go('category','${c.id}')">
+          <div class="emoji">${c.emoji}</div>
+          <h3>${c.name}</h3><p>${c.desc}</p>
+          <div class="cnt">${n}개 문서</div>
+        </div>`}).join('')}
+    </div>
+
+    ${recent.length?`<div class="section-title">🕘 최근 본 문서</div>
+      <div class="doc-grid">${recent.map(docCard).join('')}</div>`:''}
+
+    <div class="section-title">✨ 새로 올라온 문서</div>
+    <div class="doc-grid">${fresh.map(docCard).join('')}</div>
+  `;
+}
+function docCard(d){return `
+  <div class="doc-card" onclick="openDoc('${d.id}')">
+    <div class="cat">${catName(d.cat)}</div>
+    <h4>${esc(d.title)} ${d.status!=='approved'?`<span class="pill ${d.status}">${d.status==='pending'?'승인 대기':'반려'}</span>`:''}</h4>
+    <div class="excerpt">${esc(stripHtml(d.body).slice(0,90))}</div>
+    <div class="meta"><span>👁 ${d.views}</span><span>${ago(d.updated)}</span></div>
+  </div>`;
+}
+
+/* ====== real-time suggestions ====== */
+function buildSuggest(q){
+  q=q.trim();if(!q)return '';
+  const arts=visibleArts().filter(d=>d.status==='approved');
+  const ql=q.toLowerCase();
+  const scored=arts.map(d=>{
+    let s=0;const t=d.title.toLowerCase();
+    if(t.startsWith(ql))s+=100;else if(t.includes(ql))s+=60;
+    if(d.tags.some(x=>x.toLowerCase().includes(ql)))s+=40;
+    if(stripHtml(d.body).toLowerCase().includes(ql))s+=15;
+    return {d,s};
+  }).filter(x=>x.s>0).sort((a,b)=>b.s-a.s).slice(0,6);
+  if(!scored.length)return `<div class="suggest"><div class="s-empty">"${esc(q)}"에 대한 결과가 없습니다. Enter로 전체 검색</div></div>`;
+  return `<div class="suggest">${scored.map(({d})=>`
+    <div class="s-item" onclick="openDoc('${d.id}')">
+      <span>📄</span>
+      <div style="flex:1"><div>${hl(d.title,q)}</div></div>
+      <span class="tag">${catName(d.cat)}</span>
+    </div>`).join('')}</div>`;
+}
+function onHomeSearch(q){document.getElementById('homeSuggest').innerHTML=buildSuggest(q);}
+function onTopSearch(q){/* live filter when on search page */ if(STATE.view==='search'){renderSearch(q);}}
+function runSearch(q){STATE.q=q;DB.searches++;save();go('search',q);}
+
+/* ====================== SEARCH ====================== */
+function renderSearch(q){
+  STATE.view='search';STATE.q=q;
+  const ql=(q||'').trim().toLowerCase();
+  let res=visibleArts().filter(d=>d.status==='approved').map(d=>{
+    let s=0;const t=d.title.toLowerCase(),body=stripHtml(d.body).toLowerCase();
+    if(t.includes(ql))s+=60;if(d.tags.some(x=>x.toLowerCase().includes(ql)))s+=40;
+    if(body.includes(ql))s+=20;s+=d.views*0.05;
+    return {d,s};
+  }).filter(x=>!ql||x.s>0);
+  if(STATE.catFilter)res=res.filter(x=>x.d.cat===STATE.catFilter);
+  if(STATE.sort==='rel')res.sort((a,b)=>b.s-a.s);
+  if(STATE.sort==='new')res.sort((a,b)=>b.d.updated-a.d.updated);
+  if(STATE.sort==='views')res.sort((a,b)=>b.d.views-a.d.views);
+
+  const v=document.getElementById('view');
+  v.innerHTML=`
+    <div class="results-head">
+      <h2>'${esc(q||'전체')}' 검색 결과 <span style="color:var(--muted);font-weight:500">${res.length}건</span></h2>
+      <div class="filters">
+        <select onchange="STATE.catFilter=this.value;renderSearch(STATE.q)">
+          <option value="">전체 카테고리</option>
+          ${CATEGORIES.map(c=>`<option value="${c.id}" ${STATE.catFilter===c.id?'selected':''}>${c.name}</option>`).join('')}
+        </select>
+        <select onchange="STATE.sort=this.value;renderSearch(STATE.q)">
+          <option value="rel" ${STATE.sort==='rel'?'selected':''}>관련도순</option>
+          <option value="new" ${STATE.sort==='new'?'selected':''}>최신순</option>
+          <option value="views" ${STATE.sort==='views'?'selected':''}>조회수순</option>
+        </select>
+      </div>
+    </div>
+    ${res.length?res.map(({d})=>`
+      <div class="result-item" onclick="openDoc('${d.id}')">
+        <div class="cat" style="font-size:12px;color:var(--primary);font-weight:700">${catName(d.cat)}</div>
+        <h4>${hl(d.title,ql)}</h4>
+        <div class="excerpt">${hl(stripHtml(d.body).slice(0,140),ql)}…</div>
+        <div class="tags">${d.tags.map(t=>`<span class="t">#${esc(t)}</span>`).join('')}</div>
+        <div class="meta" style="display:flex;gap:12px;font-size:12px;color:var(--muted);margin-top:8px">
+          <span>👁 ${d.views}</span><span>✍ ${authorName(d.author)}</span><span>${fmtDate(d.updated)}</span></div>
+      </div>`).join(''):`<div class="empty">검색 결과가 없습니다. 다른 키워드로 시도해보세요.</div>`}
+  `;
+  const ts=document.getElementById('topSearch');if(ts&&ts.value!==q)ts.value=q;
+}
+function authorName(email){const u=DB.users.find(x=>x.email===email);return u?u.name:email;}
+
+/* ====================== CATEGORY ====================== */
+function renderCategory(catId){
+  STATE.view='category';
+  const c=CATEGORIES.find(x=>x.id===catId);
+  const docs=visibleArts().filter(d=>d.cat===catId&&d.status==='approved').sort((a,b)=>b.updated-a.updated);
+  document.getElementById('view').innerHTML=`
+    <div class="breadcrumb"><a href="#" onclick="go('home');return false">홈</a> › ${c.name}</div>
+    <div class="hero" style="padding:10px 0 20px;text-align:left">
+      <h1>${c.emoji} ${c.name}</h1><p>${c.desc}</p>
+    </div>
+    <div class="tags" style="margin-bottom:18px">${c.subs.map(s=>`<span class="t" style="font-size:12.5px;background:#eef1f6;padding:4px 12px;border-radius:20px">${s}</span>`).join('')}</div>
+    ${docs.length?`<div class="doc-grid">${docs.map(docCard).join('')}</div>`:`<div class="empty">이 카테고리에 아직 문서가 없습니다.</div>`}
+  `;
+}
+
+/* ====================== ARTICLE ====================== */
+function openDoc(id){const d=DB.arts.find(x=>x.id===id);if(d&&d.status==='approved'){d.views++;DB.recent=[id,...DB.recent.filter(x=>x!==id)].slice(0,8);save();}go('article',id);}
+function renderArticle(id){
+  const d=DB.arts.find(x=>x.id===id);if(!d)return go('home');
+  const m=me();const mine=d.author===m.email;
+  document.getElementById('view').innerHTML=`
+    <div class="article">
+      <div class="breadcrumb"><a href="#" onclick="go('home');return false">홈</a> › <a href="#" onclick="go('category','${d.cat}');return false">${catName(d.cat)}</a></div>
+      <h1>${esc(d.title)} ${d.status!=='approved'?`<span class="pill ${d.status}">${d.status==='pending'?'승인 대기':'반려됨'}</span>`:''}</h1>
+      <div class="a-meta">
+        <span>✍ ${authorName(d.author)}</span><span>📅 ${fmtDate(d.updated)} 업데이트</span>
+        <span>👁 ${d.views}</span>${d.tags.map(t=>`<span class="t" style="background:#eef1f6;padding:2px 9px;border-radius:20px;font-size:12px">#${esc(t)}</span>`).join('')}
+      </div>
+      ${d.status==='rejected'&&d.reject?`<div class="msg err" style="margin-bottom:16px">반려 사유: ${esc(d.reject)}</div>`:''}
+      ${d.status==='pending'?`<div class="msg info" style="margin-bottom:16px">이 문서는 관리자 승인 대기 중입니다. 승인 후 전체 공개됩니다.</div>`:''}
+      <div class="a-body">${d.body}</div>
+      <div class="a-actions">
+        ${(mine||isAdmin())?`<button class="btn ghost sm" onclick="go('editor','${d.id}')">✏️ 수정</button>`:''}
+        ${isAdmin()&&d.status==='pending'?`<button class="btn ok sm" onclick="approveDoc('${d.id}')">✅ 승인</button>
+          <button class="btn danger sm" onclick="askReject('${d.id}')">⛔ 반려</button>`:''}
+        ${isAdmin()?`<button class="btn ghost sm" onclick="toggleHide('${d.id}')">${d.status==='hidden'?'공개로 전환':'🙈 비공개'}</button>
+          <button class="btn danger sm" onclick="delDoc('${d.id}')">🗑 삭제</button>`:''}
+      </div>
+      ${d.history.length?`<div class="history"><h3>수정 이력</h3>${d.history.slice().reverse().map(h=>`<div class="h-row">• ${fmtDate(h.t)} — ${esc(h.by)} ${esc(h.note||'수정')}</div>`).join('')}</div>`:''}
+    </div>`;
+}
+
+/* ====================== EDITOR ====================== */
+let EDIT_ID=null, ATTACH=[];
+function renderEditor(id){
+  EDIT_ID=id||null;ATTACH=[];
+  const d=id?DB.arts.find(x=>x.id===id):null;
+  if(d&&d.attach)ATTACH=[...d.attach];
+  document.getElementById('view').innerHTML=`
+    <div class="editor">
+      <h2>${d?'문서 수정':'새 문서 작성'}</h2>
+      <div class="field"><label>제목</label><input id="edTitle" placeholder="문서 제목" value="${d?esc(d.title):''}"></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div class="field" style="flex:1;min-width:180px"><label>카테고리</label>
+          <select id="edCat">${CATEGORIES.map(c=>`<option value="${c.id}" ${d&&d.cat===c.id?'selected':''}>${c.name}</option>`).join('')}</select></div>
+        <div class="field" style="flex:1;min-width:180px"><label>태그 (쉼표로 구분)</label>
+          <input id="edTags" placeholder="예: 휴가, 신청, 연차" value="${d?esc(d.tags.join(', ')):''}"></div>
+      </div>
+      <div class="field"><label>본문</label>
+        <div class="toolbar">
+          <button onclick="fmt('formatBlock','h2')" title="제목">H2</button>
+          <button onclick="fmt('formatBlock','h3')" title="소제목">H3</button>
+          <span class="sep"></span>
+          <button onclick="fmt('bold')" style="font-weight:800">B</button>
+          <button onclick="fmt('italic')" style="font-style:italic">I</button>
+          <button onclick="fmt('underline')" style="text-decoration:underline">U</button>
+          <span class="sep"></span>
+          <button onclick="fmt('insertUnorderedList')">•</button>
+          <button onclick="fmt('insertOrderedList')">1.</button>
+          <button onclick="fmt('formatBlock','p')" title="본문">¶</button>
+        </div>
+        <div id="edBody" class="wysiwyg" contenteditable="true" data-ph="내용을 입력하세요. 상단 버튼으로 서식을 적용할 수 있습니다.">${d?d.body:''}</div>
+      </div>
+      <div class="field"><label>파일 첨부 (이미지·PDF 등)</label>
+        <input id="edFile" type="file" multiple onchange="addAttach(this.files)">
+        <div id="attachList" class="attach-list"></div>
+      </div>
+      <div class="editor-actions">
+        <button class="btn" onclick="submitDoc()">${d?'수정 제출':'업로드 (승인 요청)'}</button>
+        <button class="btn ghost" onclick="saveDraft()">임시 저장</button>
+        <button class="btn ghost" onclick="go('home')">취소</button>
+      </div>
+      <div class="note">제출된 문서는 ${isAdmin()?'관리자 권한으로 즉시 공개됩니다.':'<b>총괄 관리자 승인</b> 후 전체에 공개됩니다.'}</div>
+    </div>`;
+  renderAttach();
+  const dr=loadDraft();if(!id&&dr){if(confirm('임시 저장된 글이 있습니다. 불러올까요?')){document.getElementById('edTitle').value=dr.title;document.getElementById('edBody').innerHTML=dr.body;document.getElementById('edTags').value=dr.tags;document.getElementById('edCat').value=dr.cat;}}
+}
+function fmt(cmd,arg){document.execCommand(cmd,false,arg||null);document.getElementById('edBody').focus();}
+function addAttach(files){[...files].forEach(f=>ATTACH.push({name:f.name,size:f.size}));renderAttach();}
+function renderAttach(){document.getElementById('attachList').innerHTML=ATTACH.map((a,i)=>`<div class="a-item">📎 ${esc(a.name)} <small style="color:var(--muted)">${(a.size/1024).toFixed(0)}KB</small><button onclick="ATTACH.splice(${i},1);renderAttach()">삭제</button></div>`).join('');}
+function collectDoc(){
+  return {title:val('edTitle').trim(),cat:val('edCat'),
+    tags:val('edTags').split(',').map(s=>s.trim()).filter(Boolean),
+    body:document.getElementById('edBody').innerHTML.trim(),attach:[...ATTACH]};
+}
+function submitDoc(){
+  const data=collectDoc();
+  if(!data.title)return toast('제목을 입력해주세요.');
+  if(!stripHtml(data.body).trim())return toast('본문을 입력해주세요.');
+  const m=me();const admin=isAdmin();
+  if(EDIT_ID){
+    const d=DB.arts.find(x=>x.id===EDIT_ID);
+    d.history.push({t:Date.now(),by:m.name,note:'내용 수정'});
+    Object.assign(d,data,{updated:Date.now(),status:admin?'approved':'pending'});
+    toast(admin?'문서를 수정했습니다.':'수정 사항이 승인 요청되었습니다.');
+  }else{
+    DB.arts.push({id:'d'+Math.random().toString(36).slice(2,9),...data,author:m.email,
+      status:admin?'approved':'pending',views:0,created:Date.now(),updated:Date.now(),history:[],reject:''});
+    toast(admin?'문서를 발행했습니다.':'업로드 완료! 관리자 승인 후 공개됩니다.');
+  }
+  clearDraft();save();refreshAdminDot();go(admin?'home':'mine');
+}
+function saveDraft(){localStorage.setItem(LS+'_draft',JSON.stringify(collectDoc()));toast('임시 저장되었습니다.');}
+function loadDraft(){try{return JSON.parse(localStorage.getItem(LS+'_draft'));}catch(e){return null;}}
+function clearDraft(){localStorage.removeItem(LS+'_draft');}
+
+/* ====================== MINE ====================== */
+function renderMine(){
+  const m=me();const docs=DB.arts.filter(d=>d.author===m.email).sort((a,b)=>b.updated-a.updated);
+  document.getElementById('view').innerHTML=`
+    <div class="hero" style="text-align:left;padding:10px 0 18px"><h1>내 작성 글</h1><p>총 ${docs.length}개 · 작성·수정한 문서의 상태를 확인하세요.</p></div>
+    ${docs.length?`<table class="tbl"><thead><tr><th>제목</th><th>카테고리</th><th>상태</th><th>조회</th><th>수정일</th><th></th></tr></thead><tbody>
+      ${docs.map(d=>`<tr>
+        <td><a href="#" onclick="go('article','${d.id}');return false">${esc(d.title)}</a></td>
+        <td>${catName(d.cat)}</td>
+        <td><span class="pill ${d.status}">${({approved:'공개',pending:'승인 대기',rejected:'반려',hidden:'비공개'})[d.status]}</span></td>
+        <td>${d.views}</td><td>${fmtDate(d.updated)}</td>
+        <td><button class="btn ghost sm" onclick="go('editor','${d.id}')">수정</button></td>
+      </tr>`).join('')}</tbody></table>`:`<div class="empty">아직 작성한 글이 없습니다. <a href="#" onclick="go('editor');return false">새 글 작성하기</a></div>`}
+  `;
+}
+
+/* ====================== DASHBOARD ====================== */
+function renderDash(){
+  STATE.view='dash';
+  const pu=pendingUsers(),pd=pendingDocs();
+  const approved=DB.arts.filter(d=>d.status==='approved').length;
+  const activeU=DB.users.filter(u=>u.status==='active').length;
+  const totalViews=DB.arts.reduce((s,d)=>s+d.views,0);
+  document.getElementById('view').innerHTML=`
+    <div class="hero" style="text-align:left;padding:10px 0 18px"><h1>👑 관리자 대시보드</h1><p>가입자 승인, 콘텐츠 검토, 활동 통계를 관리합니다.</p></div>
+    <div class="stat-grid">
+      <div class="stat"><div class="n">${activeU}</div><div class="l">활성 사용자</div></div>
+      <div class="stat"><div class="n">${approved}</div><div class="l">공개 문서</div></div>
+      <div class="stat"><div class="n" style="color:var(--warn)">${pd.length}</div><div class="l">승인 대기 문서</div></div>
+      <div class="stat"><div class="n" style="color:var(--warn)">${pu.length}</div><div class="l">가입 승인 대기</div></div>
+      <div class="stat"><div class="n">${totalViews}</div><div class="l">누적 조회수</div></div>
+      <div class="stat"><div class="n">${DB.searches}</div><div class="l">검색 횟수</div></div>
+    </div>
+    <div class="dash-tabs">
+      <button class="${STATE.dashTab==='users'?'active':''}" onclick="STATE.dashTab='users';renderDash()">가입 승인 ${pu.length?`<span class="b">${pu.length}</span>`:''}</button>
+      <button class="${STATE.dashTab==='members'?'active':''}" onclick="STATE.dashTab='members';renderDash()">사용자 관리</button>
+      <button class="${STATE.dashTab==='content'?'active':''}" onclick="STATE.dashTab='content';renderDash()">콘텐츠 승인 ${pd.length?`<span class="b">${pd.length}</span>`:''}</button>
+      <button class="${STATE.dashTab==='all'?'active':''}" onclick="STATE.dashTab='all';renderDash()">전체 콘텐츠</button>
+    </div>
+    <div id="dashBody"></div>`;
+  renderDashBody();
+}
+function renderDashBody(){
+  const b=document.getElementById('dashBody');
+  if(STATE.dashTab==='users'){
+    const pu=pendingUsers();
+    b.innerHTML=pu.length?`<table class="tbl"><thead><tr><th>이름</th><th>이메일</th><th>부서</th><th>신청일</th><th>처리</th></tr></thead><tbody>
+      ${pu.map(u=>`<tr><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td>${esc(u.dept||'-')}</td><td>${ago(u.joined)}</td>
+        <td><div class="row-actions"><button class="btn ok sm" onclick="approveUser('${u.email}')">승인</button>
+        <button class="btn danger sm" onclick="rejectUser('${u.email}')">거절</button></div></td></tr>`).join('')}</tbody></table>`
+      :`<div class="empty">승인 대기 중인 가입 신청이 없습니다.</div>`;
+  }
+  else if(STATE.dashTab==='members'){
+    const us=DB.users.filter(u=>u.status!=='pending');
+    b.innerHTML=`<table class="tbl"><thead><tr><th>이름</th><th>이메일</th><th>부서</th><th>권한</th><th>상태</th><th>관리</th></tr></thead><tbody>
+      ${us.map(u=>`<tr><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td>${esc(u.dept||'-')}</td>
+        <td>${u.role==='admin'?'👑 관리자':'일반'}</td>
+        <td><span class="pill ${u.status==='active'?'approved':'rejected'}">${u.status==='active'?'활성':'퇴장'}</span></td>
+        <td><div class="row-actions">
+          ${u.email!==me().email?`
+            <button class="btn ghost sm" onclick="toggleRole('${u.email}')">${u.role==='admin'?'관리자 해제':'관리자 지정'}</button>
+            ${u.status==='active'?`<button class="btn danger sm" onclick="removeUser('${u.email}')">강제 퇴장</button>`:`<button class="btn ok sm" onclick="restoreUser('${u.email}')">복구</button>`}
+          `:'<small style="color:var(--muted)">본인</small>'}
+        </div></td></tr>`).join('')}</tbody></table>`;
+  }
+  else if(STATE.dashTab==='content'){
+    const pd=pendingDocs();
+    b.innerHTML=pd.length?pd.map(d=>`
+      <div class="result-item" style="cursor:default">
+        <div style="display:flex;align-items:start;gap:10px;flex-wrap:wrap">
+          <div style="flex:1">
+            <div class="cat" style="color:var(--primary);font-weight:700;font-size:12px">${catName(d.cat)} · ${authorName(d.author)} · ${ago(d.created)}</div>
+            <h4 style="margin:5px 0"><a href="#" onclick="go('article','${d.id}');return false">${esc(d.title)}</a></h4>
+            <div class="excerpt" style="color:var(--muted);font-size:13.5px">${esc(stripHtml(d.body).slice(0,120))}…</div>
+          </div>
+          <div class="row-actions">
+            <button class="btn ok sm" onclick="approveDoc('${d.id}')">승인</button>
+            <button class="btn danger sm" onclick="askReject('${d.id}')">반려</button>
+          </div>
+        </div>
+      </div>`).join(''):`<div class="empty">검토할 콘텐츠가 없습니다.</div>`;
+  }
+  else if(STATE.dashTab==='all'){
+    const ds=[...DB.arts].sort((a,b)=>b.updated-a.updated);
+    b.innerHTML=`<table class="tbl"><thead><tr><th>제목</th><th>카테고리</th><th>작성자</th><th>상태</th><th>조회</th><th>관리</th></tr></thead><tbody>
+      ${ds.map(d=>`<tr>
+        <td><a href="#" onclick="go('article','${d.id}');return false">${esc(d.title)}</a></td>
+        <td>${catName(d.cat)}</td><td>${authorName(d.author)}</td>
+        <td><span class="pill ${d.status}">${({approved:'공개',pending:'대기',rejected:'반려',hidden:'비공개'})[d.status]}</span></td>
+        <td>${d.views}</td>
+        <td><div class="row-actions">
+          <button class="btn ghost sm" onclick="toggleHide('${d.id}')">${d.status==='hidden'?'공개':'비공개'}</button>
+          <button class="btn danger sm" onclick="delDoc('${d.id}')">삭제</button>
+        </div></td></tr>`).join('')}</tbody></table>`;
+  }
+}
+
+/* ====== admin actions ====== */
+function approveUser(email){const u=DB.users.find(x=>x.email===email);u.status='active';save();refreshAdminDot();renderDash();toast(u.name+' 님을 승인했습니다.');}
+function rejectUser(email){if(!confirm('가입 신청을 거절하시겠습니까?'))return;DB.users=DB.users.filter(x=>x.email!==email);save();refreshAdminDot();renderDash();toast('가입 신청을 거절했습니다.');}
+function toggleRole(email){const u=DB.users.find(x=>x.email===email);u.role=u.role==='admin'?'user':'admin';save();renderDash();toast('권한을 변경했습니다.');}
+function removeUser(email){if(!confirm('해당 사용자를 강제 퇴장시키겠습니까? 로그인이 차단됩니다.'))return;DB.users.find(x=>x.email===email).status='removed';save();renderDash();toast('사용자를 퇴장 처리했습니다.');}
+function restoreUser(email){DB.users.find(x=>x.email===email).status='active';save();renderDash();toast('사용자를 복구했습니다.');}
+function approveDoc(id){const d=DB.arts.find(x=>x.id===id);d.status='approved';d.updated=Date.now();save();refreshAdminDot();if(STATE.view==='dash')renderDash();else go('article',id);toast('콘텐츠를 승인했습니다. 전체 공개됩니다.');}
+let REJECT_ID=null;
+function askReject(id){REJECT_ID=id;showModal(`<h3>콘텐츠 반려</h3><p style="color:var(--muted);font-size:13.5px">작성자에게 전달할 반려 사유를 입력하세요.</p>
+  <textarea id="rejectReason" placeholder="예: 예산 수치가 최신 기준과 다릅니다. 2026년 단가로 수정 바랍니다."></textarea>
+  <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">취소</button><button class="btn danger" onclick="confirmReject()">반려</button></div>`);}
+function confirmReject(){const d=DB.arts.find(x=>x.id===REJECT_ID);d.status='rejected';d.reject=val('rejectReason')||'';save();closeModal();refreshAdminDot();if(STATE.view==='dash')renderDash();else go('article',REJECT_ID);toast('콘텐츠를 반려했습니다.');}
+function toggleHide(id){const d=DB.arts.find(x=>x.id===id);d.status=d.status==='hidden'?'approved':'hidden';save();if(STATE.view==='dash')renderDash();else go('article',id);toast(d.status==='hidden'?'비공개로 전환했습니다.':'공개로 전환했습니다.');}
+function delDoc(id){if(!confirm('이 문서를 삭제하시겠습니까? 되돌릴 수 없습니다.'))return;DB.arts=DB.arts.filter(x=>x.id!==id);save();refreshAdminDot();if(STATE.view==='dash')renderDash();else go('home');toast('문서를 삭제했습니다.');}
+
+/* ====== modal ====== */
+function showModal(html){const bg=document.createElement('div');bg.className='modal-bg';bg.id='modalBg';bg.innerHTML=`<div class="modal">${html}</div>`;bg.onclick=e=>{if(e.target===bg)closeModal();};document.body.appendChild(bg);}
+function closeModal(){const m=document.getElementById('modalBg');if(m)m.remove();}
+
+/* ====================== INIT ====================== */
+(function init(){
+  if(DB.sessionEmail&&me()&&me().status==='active'){enterApp();}
+  document.getElementById('loginPw').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+})();
+</script>
+</body>
+</html>
