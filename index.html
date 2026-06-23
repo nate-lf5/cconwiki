@@ -257,6 +257,33 @@
   .attach-list .a-item{display:flex;align-items:center;gap:9px;font-size:13px;background:#f5f5fa;padding:8px 12px;border-radius:10px}
   .attach-list .a-item button{margin-left:auto;color:var(--danger);font-size:13px}
 
+  /* COMMENTS */
+  .comments{margin-top:22px;background:var(--card,#fff);border:1px solid var(--line);border-radius:18px;padding:24px 26px}
+  .cmt-title{font-size:17px;font-weight:800;letter-spacing:-.03em;margin-bottom:16px}
+  .cmt-title span{color:var(--muted);font-weight:700;margin-left:2px}
+  .cmt-list{display:flex;flex-direction:column;gap:14px;margin-bottom:20px}
+  .cmt-empty{color:var(--muted);font-size:14px;padding:8px 0}
+  .cmt-item{border-bottom:1px solid var(--line);padding-bottom:14px}
+  .cmt-item:last-child{border-bottom:none;padding-bottom:0}
+  .cmt-head{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+  .cmt-author{font-weight:700;font-size:14px}
+  .cmt-date{color:var(--muted);font-size:12.5px}
+  .cmt-del{margin-left:auto;color:var(--danger);font-size:12.5px;background:none;border:none;cursor:pointer}
+  .cmt-body{font-size:14.5px;line-height:1.65;word-break:break-word;white-space:normal}
+  .cmt-body a{color:var(--brand,#2b6cff);text-decoration:underline}
+  .cmt-attach{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
+  .cmt-attach img{max-width:220px;max-height:200px;border-radius:10px;border:1px solid var(--line);display:block}
+  .cmt-file{display:inline-flex;align-items:center;gap:6px;font-size:13px;background:#f5f5fa;padding:7px 11px;border-radius:10px}
+  .cmt-file small{color:var(--muted)}
+  .cmt-form{border-top:1px solid var(--line);padding-top:16px}
+  .cmt-form textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:14.5px;font-family:inherit;resize:vertical;box-sizing:border-box}
+  .cmt-form textarea:focus{outline:none;border-color:var(--brand,#2b6cff)}
+  .cmt-attach-edit{margin-top:9px;display:flex;flex-direction:column;gap:7px}
+  .cmt-attach-edit .a-item{display:flex;align-items:center;gap:9px;font-size:13px;background:#f5f5fa;padding:8px 12px;border-radius:10px}
+  .cmt-attach-edit .a-item button{margin-left:auto;color:var(--danger);font-size:13px;background:none;border:none;cursor:pointer}
+  .cmt-form-actions{display:flex;align-items:center;gap:10px;margin-top:12px}
+  .cmt-form-actions .cmt-file-btn{cursor:pointer;margin-right:auto}
+
   /* DASHBOARD */
   .page-head{margin:6px 0 22px}
   .page-head h1{font-size:25px;font-weight:800;letter-spacing:-.035em}
@@ -453,9 +480,9 @@ function seed(){
     a({title:'재택·유연근무 운영 정책', cat:'leave', tags:['유연근무','재택'], author:'sora@ccon.co.kr', status:'pending', views:0, created:now-1*D, updated:now-1*D,
       body:'<h2>유연근무</h2><p>코어타임 10:00~16:00, 출근 08~10시 자율.</p>'}),
   ];
-  return {users, arts, requests:[], categories:DEFAULT_CATS.map(c=>({id:c.id,name:c.name,emoji:c.emoji,desc:c.desc})), searches:0, sessionEmail:null};
+  return {users, arts, requests:[], comments:[], categories:DEFAULT_CATS.map(c=>({id:c.id,name:c.name,emoji:c.emoji,desc:c.desc})), searches:0, sessionEmail:null};
 }
-function loadLocal(){try{const r=JSON.parse(localStorage.getItem(LS));if(r&&r.users){if(!r.requests)r.requests=[];if(!r.categories||!r.categories.length)r.categories=DEFAULT_CATS.map(c=>({id:c.id,name:c.name,emoji:c.emoji,desc:c.desc}));return r;}}catch(e){}const s=seed();localStorage.setItem(LS,JSON.stringify(s));return s;}
+function loadLocal(){try{const r=JSON.parse(localStorage.getItem(LS));if(r&&r.users){if(!r.requests)r.requests=[];if(!r.comments)r.comments=[];if(!r.categories||!r.categories.length)r.categories=DEFAULT_CATS.map(c=>({id:c.id,name:c.name,emoji:c.emoji,desc:c.desc}));return r;}}catch(e){}const s=seed();localStorage.setItem(LS,JSON.stringify(s));return s;}
 function save(){if(SUPA)return;localStorage.setItem(LS,JSON.stringify(DB));}
 function me(){return DB.users.find(u=>u.email===DB.sessionEmail)||null;}
 function isAdmin(){const m=me();return m&&m.role==='admin';}
@@ -470,16 +497,19 @@ function mapArt(r){return {id:r.id,title:r.title,cat:r.cat,tags:r.tags||[],body:
   created:new Date(r.created_at).getTime(),updated:new Date(r.updated_at).getTime()};}
 function mapReq(r){return {id:r.id,keyword:r.keyword,note:r.note||'',by:r.by_email,byName:r.by_name||'',status:r.status,created:new Date(r.created_at).getTime()};}
 function mapCat(r){return {id:r.id,name:r.name,emoji:r.emoji||'📁',desc:r.description||''};}
+function mapComment(r){return {id:r.id,articleId:r.article_id,body:r.body||'',attach:r.attach||[],author:r.author_email,authorName:r.author_name||'',created:new Date(r.created_at).getTime()};}
 async function refetch(){
   if(!SUPA)return;
-  const [{data:us},{data:ar},{data:rq}]=await Promise.all([
+  const [{data:us},{data:ar},{data:rq},{data:cm}]=await Promise.all([
     sb.from('profiles').select('*'),
     sb.from('articles').select('*'),
-    sb.from('review_requests').select('*')
+    sb.from('review_requests').select('*'),
+    sb.from('comments').select('*').order('created_at',{ascending:true})
   ]);
   DB.users=(us||[]).map(mapUser);
   DB.arts=(ar||[]).map(mapArt);
   DB.requests=(rq||[]).map(mapReq);
+  DB.comments=(cm||[]).map(mapComment);
   try{
     let {data:ct,error:ce}=await sb.from('categories').select('*').order('created_at',{ascending:true});
     if(ce){DB.categories=[];}
@@ -550,6 +580,21 @@ async function dataDeleteRequest(id){
   DB.requests=DB.requests.filter(x=>x.id!==id);save();
 }
 function openRequests(){return DB.requests.filter(r=>r.status==='open');}
+function commentsFor(articleId){return DB.comments.filter(c=>c.articleId===articleId).sort((a,b)=>a.created-b.created);}
+async function dataCreateComment(articleId,body,attach){
+  const m=me();
+  if(SUPA){
+    const row={article_id:articleId,body,attach:attach||[],author_email:m.email,author_name:m.name};
+    const {data,error}=await sb.from('comments').insert(row).select().single();
+    if(error){toast(/relation|exist|schema/i.test(error.message)?'댓글 테이블이 아직 없습니다. 안내드린 SQL을 다시 실행해주세요.':'댓글 등록 실패: '+error.message);throw error;}
+    DB.comments.push(mapComment(data));return;
+  }
+  DB.comments.push({id:'c'+Math.random().toString(36).slice(2,9),articleId,body,attach:attach||[],author:m.email,authorName:m.name,created:Date.now()});save();
+}
+async function dataDeleteComment(id){
+  if(SUPA){const {error}=await sb.from('comments').delete().eq('id',id);if(error){toast('삭제 실패: '+error.message);throw error;}}
+  DB.comments=DB.comments.filter(c=>c.id!==id);save();
+}
 async function dataCreateCategory(cat){
   if(SUPA){
     const row={id:cat.id,name:cat.name,emoji:cat.emoji,description:cat.desc||''};
@@ -922,9 +967,74 @@ function renderArticle(id){
           <button class="btn danger sm" onclick="delDoc('${d.id}')">🗑 삭제</button>`:''}
       </div>
       ${d.history.length?`<div class="history"><h3>수정 이력</h3>${d.history.slice().reverse().map(h=>`<div class="h-row">• ${fmtDate(h.t)} — ${esc(h.by)} ${esc(h.note||'수정')}</div>`).join('')}</div>`:''}
-    </div>`;
+    </div>
+    <div class="comments" id="commentsWrap"></div>`;
   const _b=document.querySelector('.a-body');if(_b)linkifyEl(_b);
   document.querySelectorAll('.a-body a').forEach(a=>{a.target='_blank';a.rel='noopener noreferrer';});
+  CMT_ATTACH=[];renderComments(d.id);
+}
+let CMT_ATTACH=[];
+function renderComments(aid){
+  const wrap=document.getElementById('commentsWrap');if(!wrap)return;
+  const list=commentsFor(aid);const m=me();
+  wrap.innerHTML=`
+    <h3 class="cmt-title">💬 댓글 <span>${list.length}</span></h3>
+    <div class="cmt-list">
+      ${list.length?list.map(c=>{
+        const canDel=c.author===m.email||isAdmin();
+        return `<div class="cmt-item">
+          <div class="cmt-head">
+            <span class="cmt-author">${esc(c.authorName||authorName(c.author))}</span>
+            <span class="cmt-date">${ago(c.created)}</span>
+            ${canDel?`<button class="cmt-del" title="삭제" onclick="delComment('${c.id}','${aid}')">삭제</button>`:''}
+          </div>
+          <div class="cmt-body">${c.body}</div>
+          ${(c.attach&&c.attach.length)?`<div class="cmt-attach">${c.attach.map(a=>a.dataUrl?`<a href="${a.dataUrl}" target="_blank" rel="noopener noreferrer"><img src="${a.dataUrl}" alt="${esc(a.name||'')}"></a>`:`<span class="cmt-file">📎 ${esc(a.name)} <small>${a.size?(a.size/1024).toFixed(0)+'KB':''}</small></span>`).join('')}</div>`:''}
+        </div>`;
+      }).join(''):'<div class="cmt-empty">아직 댓글이 없습니다. 첫 댓글을 남겨보세요.</div>'}
+    </div>
+    <div class="cmt-form">
+      <textarea id="cmtBody" rows="3" placeholder="댓글을 입력하세요. 링크(URL)를 붙여넣으면 자동으로 연결됩니다."></textarea>
+      <div id="cmtAttachList" class="cmt-attach-edit"></div>
+      <div class="cmt-form-actions">
+        <label class="btn ghost sm cmt-file-btn">📎 파일/이미지 첨부<input type="file" multiple style="display:none" onchange="addCmtAttach(this.files)"></label>
+        <button class="btn grad sm" onclick="submitComment('${aid}')">댓글 등록</button>
+      </div>
+    </div>`;
+  wrap.querySelectorAll('.cmt-body').forEach(b=>{linkifyEl(b);b.querySelectorAll('a').forEach(a=>{a.target='_blank';a.rel='noopener noreferrer';});});
+  renderCmtAttach();
+}
+function addCmtAttach(files){
+  [...files].forEach(f=>{
+    if(/^image\//.test(f.type)){
+      const r=new FileReader();
+      r.onload=()=>{const img=new Image();img.onload=()=>{
+        const MAX=1280;let w=img.width,h=img.height;if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}
+        const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);
+        let data;try{data=cv.toDataURL('image/jpeg',0.82);}catch(e){data=r.result;}
+        CMT_ATTACH.push({name:f.name,size:f.size,dataUrl:data});renderCmtAttach();
+      };img.onerror=()=>toast('이미지를 불러오지 못했습니다.');img.src=r.result;};
+      r.readAsDataURL(f);
+    }else{CMT_ATTACH.push({name:f.name,size:f.size});renderCmtAttach();}
+  });
+}
+function renderCmtAttach(){
+  const el=document.getElementById('cmtAttachList');if(!el)return;
+  el.innerHTML=CMT_ATTACH.map((a,i)=>`<div class="a-item">${a.dataUrl?'🖼':'📎'} ${esc(a.name)} <small style="color:var(--muted)">${a.size?(a.size/1024).toFixed(0)+'KB':''}</small><button onclick="CMT_ATTACH.splice(${i},1);renderCmtAttach()">삭제</button></div>`).join('');
+}
+async function submitComment(aid){
+  const body=val('cmtBody').trim();
+  if(!body&&!CMT_ATTACH.length)return toast('댓글 내용을 입력해주세요.');
+  try{await dataCreateComment(aid,esc(body).replace(/\n/g,'<br>'),[...CMT_ATTACH]);}
+  catch(e){return;}
+  CMT_ATTACH=[];renderComments(aid);
+  const list=document.querySelector('.cmt-list');if(list)list.scrollIntoView({behavior:'smooth',block:'end'});
+  toast('댓글을 등록했습니다.');
+}
+async function delComment(id,aid){
+  if(!confirm('이 댓글을 삭제하시겠습니까?'))return;
+  try{await dataDeleteComment(id);}catch(e){return;}
+  renderComments(aid);toast('댓글을 삭제했습니다.');
 }
 
 /* ====================== EDITOR ====================== */

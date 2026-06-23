@@ -204,6 +204,39 @@ drop policy if exists "cat_delete" on public.categories;
 create policy "cat_delete" on public.categories
   for delete to authenticated using (public.is_admin());
 
+-- ---------- 6-4. 댓글 (승인된 직원이 게시글에 작성) ----------
+create table if not exists public.comments (
+  id           uuid primary key default gen_random_uuid(),
+  article_id   uuid not null references public.articles(id) on delete cascade,
+  body         text not null default '',
+  attach       jsonb not null default '[]',
+  author_email text not null,
+  author_name  text,
+  created_at   timestamptz not null default now()
+);
+create index if not exists comments_article_idx on public.comments(article_id, created_at);
+alter table public.comments enable row level security;
+
+-- 읽기: 승인(active)된 직원이면 모두
+drop policy if exists "comments_read" on public.comments;
+create policy "comments_read" on public.comments
+  for select to authenticated using (public.is_active());
+
+-- 작성: 승인된 직원이 본인 이메일로만
+drop policy if exists "comments_insert" on public.comments;
+create policy "comments_insert" on public.comments
+  for insert to authenticated with check (
+    public.is_active()
+    and author_email = (auth.jwt() ->> 'email')
+  );
+
+-- 삭제: 작성자 본인 또는 관리자
+drop policy if exists "comments_delete" on public.comments;
+create policy "comments_delete" on public.comments
+  for delete to authenticated using (
+    author_email = (auth.jwt() ->> 'email') or public.is_admin()
+  );
+
 -- ---------- 7. 시작용 샘플 문서 ----------
 insert into public.articles (title, body, cat, tags, author_email, author_name, status, views) values
 ('연차 휴가 신청 방법 및 규정',
