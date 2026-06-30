@@ -237,7 +237,11 @@ create policy "comments_delete" on public.comments
     author_email = (auth.jwt() ->> 'email') or public.is_admin()
   );
 
--- ---------- 7. 시작용 샘플 문서 ----------
+-- ---------- 7. 시작용 샘플 문서 (최초 설치 시, 글이 하나도 없을 때만 1회 실행) ----------
+-- ★ 이미 글이 있으면 건너뜁니다. 그래서 이 파일을 여러 번 Run 해도 샘플이 중복되지 않습니다.
+do $$
+begin
+if not exists (select 1 from public.articles) then
 insert into public.articles (title, body, cat, tags, author_email, author_name, status, views) values
 ('연차 휴가 신청 방법 및 규정',
  '<h2>연차 휴가 개요</h2><p>입사 1년 미만은 매월 개근 시 <strong>1일</strong>의 연차가 발생하며, 1년 이상 근속자는 연 <strong>15일</strong>이 부여됩니다.</p><h2>신청 절차</h2><ol><li>그룹웨어 → 휴가 신청 메뉴 접속</li><li>희망 일자 및 사유 입력</li><li>팀장 승인 → 경영지원팀 확정</li></ol>',
@@ -257,6 +261,8 @@ insert into public.articles (title, body, cat, tags, author_email, author_name, 
 ('카페테리아 이용 및 식대 지원 안내',
  '<h2>운영 시간</h2><p>점심 11:30~13:00 / 저녁(행사 시) 18:00~19:00</p><h2>식대 지원</h2><p>1일 <strong>1만원</strong> 한도, 야근/행사 시 별도 정산.</p>',
  'welfare', '{식사,복지,식대}', 'nate@ccon.co.kr', 'Nathan (대표)', 'approved', 64);
+end if;
+end $$;
 
 -- =====================================================================
 --  설치 완료! 이제 index.html 의 CONFIG 에 Supabase URL/Key 를 넣으면 됩니다.
